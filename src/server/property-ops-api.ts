@@ -126,7 +126,9 @@ async function appendAuthoritativeAudit(
   reason: string | undefined,
   aggregateVersion: number,
 ): Promise<void> {
-  await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [identity.orgId]);
+  await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [
+    identity.orgId,
+  ]);
   const last = await client.query<{ seq: string | number; event_hash: string }>(
     `SELECT seq, event_hash
        FROM prop_ops.audit_events
@@ -257,133 +259,161 @@ async function readJson(request: Request): Promise<ActionBody> {
 }
 
 async function session(request: Request, env: unknown): Promise<Response> {
-  const result = await withTenantTransaction(request, env, async (_client, identity) => ({
-    ok: true,
-    identity: {
-      userId: identity.userId,
-      domainActorId: identity.domainActorId,
-      orgId: identity.orgId,
-      roles: identity.roles,
-      propertyIds: identity.propertyIds,
-      unitIds: identity.unitIds,
-    },
-  }));
+  const result = await withTenantTransaction(
+    request,
+    env,
+    async (_client, identity) => ({
+      ok: true,
+      identity: {
+        userId: identity.userId,
+        domainActorId: identity.domainActorId,
+        orgId: identity.orgId,
+        roles: identity.roles,
+        propertyIds: identity.propertyIds,
+        unitIds: identity.unitIds,
+      },
+    }),
+  );
   return jsonResponse(result);
 }
 
 async function state(request: Request, env: unknown): Promise<Response> {
-  const result = await withTenantTransaction(request, env, async (client, identity) => {
-    const aggregate = await loadAggregate(client, MAIN_CASE_ID, false);
-    return {
-      ok: true,
-      state: aggregate.state,
-      version: aggregate.version,
-      identity: {
-        domainActorId: identity.domainActorId,
-        roles: identity.roles,
-        orgId: identity.orgId,
-      },
-    };
-  });
+  const result = await withTenantTransaction(
+    request,
+    env,
+    async (client, identity) => {
+      const aggregate = await loadAggregate(client, MAIN_CASE_ID, false);
+      return {
+        ok: true,
+        state: aggregate.state,
+        version: aggregate.version,
+        identity: {
+          domainActorId: identity.domainActorId,
+          roles: identity.roles,
+          orgId: identity.orgId,
+        },
+      };
+    },
+  );
   return jsonResponse(result);
 }
 
 async function bootstrap(request: Request, rawEnv: unknown): Promise<Response> {
-  const result = await withTenantTransaction(request, rawEnv, async (client, identity, env) => {
-    if (requireEnv(env, "PROP_OPS_ALLOW_SYNTHETIC_BOOTSTRAP") !== "true") {
-      throw new ApiError(404, "NOT_FOUND", "Not found.");
-    }
-    if (!identity.roles.includes("ops")) {
-      throw new ApiError(403, "OPS_REQUIRED", "Ops authority is required.");
-    }
+  const result = await withTenantTransaction(
+    request,
+    rawEnv,
+    async (client, identity, env) => {
+      if (requireEnv(env, "PROP_OPS_ALLOW_SYNTHETIC_BOOTSTRAP") !== "true") {
+        throw new ApiError(404, "NOT_FOUND", "Not found.");
+      }
+      if (!identity.roles.includes("ops")) {
+        throw new ApiError(403, "OPS_REQUIRED", "Ops authority is required.");
+      }
 
-    const syntheticOrg = requireEnv(env, "PROP_OPS_SYNTHETIC_ORG_ID");
-    if (identity.orgId !== syntheticOrg) {
-      throw new ApiError(403, "SYNTHETIC_ONLY", "Bootstrap is restricted to the synthetic tenant.");
-    }
+      const syntheticOrg = requireEnv(env, "PROP_OPS_SYNTHETIC_ORG_ID");
+      if (identity.orgId !== syntheticOrg) {
+        throw new ApiError(
+          403,
+          "SYNTHETIC_ONLY",
+          "Bootstrap is restricted to the synthetic tenant.",
+        );
+      }
 
-    const seeded = seedState(Date.now());
-    const inserted = await client.query<AggregateRow>(
-      `INSERT INTO prop_ops.case_aggregate_state (org_id, case_public_id, state, version)
+      const seeded = seedState(Date.now());
+      const inserted = await client.query<AggregateRow>(
+        `INSERT INTO prop_ops.case_aggregate_state (org_id, case_public_id, state, version)
        VALUES ($1, $2, $3::jsonb, 1)
        ON CONFLICT (org_id, case_public_id) DO NOTHING
        RETURNING state, version`,
-      [identity.orgId, MAIN_CASE_ID, JSON.stringify(seeded)],
-    );
+        [identity.orgId, MAIN_CASE_ID, JSON.stringify(seeded)],
+      );
 
-    const row = inserted.rows[0];
-    const aggregate = row
-      ? { state: row.state, version: Number(row.version) }
-      : await loadAggregate(client, MAIN_CASE_ID, false);
+      const row = inserted.rows[0];
+      const aggregate = row
+        ? { state: row.state, version: Number(row.version) }
+        : await loadAggregate(client, MAIN_CASE_ID, false);
 
-    return { ok: true, ...aggregate };
-  });
+      return { ok: true, ...aggregate };
+    },
+  );
   return jsonResponse(result, 201);
 }
 
 async function mutate(request: Request, env: unknown): Promise<Response> {
   const body = await readJson(request);
   if (!isAction(body.action)) {
-    throw new ApiError(400, "ACTION_INVALID", "A recognized domain action is required.");
+    throw new ApiError(
+      400,
+      "ACTION_INVALID",
+      "A recognized domain action is required.",
+    );
   }
   const action = body.action;
   const expectedVersion = parseExpectedVersion(body.expectedVersion);
 
-  const result = await withTenantTransaction(request, env, async (client, identity) => {
-    const aggregate = await loadAggregate(client, MAIN_CASE_ID, true);
-    if (aggregate.version !== expectedVersion) {
-      throw new ApiError(
-        409,
-        "VERSION_CONFLICT",
-        `Expected version ${expectedVersion}, current version is ${aggregate.version}.`,
-      );
-    }
+  const result = await withTenantTransaction(
+    request,
+    env,
+    async (client, identity) => {
+      const aggregate = await loadAggregate(client, MAIN_CASE_ID, true);
+      if (aggregate.version !== expectedVersion) {
+        throw new ApiError(
+          409,
+          "VERSION_CONFLICT",
+          `Expected version ${expectedVersion}, current version is ${aggregate.version}.`,
+        );
+      }
 
-    const actor = actorForAction(identity, action, aggregate.state);
-    const now = Date.now();
-    const transition = dispatch(aggregate.state, action, actor, now);
-    const nextVersion = aggregate.version + 1;
+      const actor = actorForAction(identity, action, aggregate.state);
+      const now = Date.now();
+      const transition = dispatch(aggregate.state, action, actor, now);
+      const nextVersion = aggregate.version + 1;
 
-    const updated = await client.query(
-      `UPDATE prop_ops.case_aggregate_state
+      const updated = await client.query(
+        `UPDATE prop_ops.case_aggregate_state
           SET state = $1::jsonb,
               version = $2,
               updated_at = now()
         WHERE case_public_id = $3
           AND version = $4
         RETURNING version`,
-      [
-        JSON.stringify(transition.state),
+        [
+          JSON.stringify(transition.state),
+          nextVersion,
+          MAIN_CASE_ID,
+          aggregate.version,
+        ],
+      );
+      if (updated.rowCount !== 1) {
+        throw new ApiError(
+          409,
+          "VERSION_CONFLICT",
+          "Canonical state changed concurrently.",
+        );
+      }
+
+      await projectCase(client, transition.state, nextVersion);
+      await appendAuthoritativeAudit(
+        client,
+        identity,
+        action,
+        actor,
+        transition.ok,
+        transition.reason,
         nextVersion,
-        MAIN_CASE_ID,
-        aggregate.version,
-      ],
-    );
-    if (updated.rowCount !== 1) {
-      throw new ApiError(409, "VERSION_CONFLICT", "Canonical state changed concurrently.");
-    }
+      );
+      if (transition.ok) {
+        await enqueueCommittedAction(client, identity, action, nextVersion);
+      }
 
-    await projectCase(client, transition.state, nextVersion);
-    await appendAuthoritativeAudit(
-      client,
-      identity,
-      action,
-      actor,
-      transition.ok,
-      transition.reason,
-      nextVersion,
-    );
-    if (transition.ok) {
-      await enqueueCommittedAction(client, identity, action, nextVersion);
-    }
-
-    return {
-      ok: transition.ok,
-      reason: transition.reason,
-      state: transition.state,
-      version: nextVersion,
-    };
-  });
+      return {
+        ok: transition.ok,
+        reason: transition.reason,
+        state: transition.state,
+        version: nextVersion,
+      };
+    },
+  );
 
   return jsonResponse(result);
 }
@@ -396,16 +426,28 @@ export async function handlePropertyOpsApi(
   if (!url.pathname.startsWith("/api/property-ops/")) return null;
 
   try {
-    if (url.pathname === "/api/property-ops/session" && request.method === "GET") {
+    if (
+      url.pathname === "/api/property-ops/session" &&
+      request.method === "GET"
+    ) {
       return await session(request, env);
     }
-    if (url.pathname === "/api/property-ops/state" && request.method === "GET") {
+    if (
+      url.pathname === "/api/property-ops/state" &&
+      request.method === "GET"
+    ) {
       return await state(request, env);
     }
-    if (url.pathname === "/api/property-ops/bootstrap" && request.method === "POST") {
+    if (
+      url.pathname === "/api/property-ops/bootstrap" &&
+      request.method === "POST"
+    ) {
       return await bootstrap(request, env);
     }
-    if (url.pathname === "/api/property-ops/action" && request.method === "POST") {
+    if (
+      url.pathname === "/api/property-ops/action" &&
+      request.method === "POST"
+    ) {
       return await mutate(request, env);
     }
     return jsonResponse({ ok: false, error: "NOT_FOUND" }, 404);

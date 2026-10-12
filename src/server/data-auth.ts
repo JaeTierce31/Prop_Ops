@@ -25,10 +25,7 @@ export class ApiError extends Error {
   }
 }
 
-const jwksCache = new Map<
-  string,
-  ReturnType<typeof createRemoteJWKSet>
->();
+const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
 function readEnv(env: RuntimeEnv, key: string): string | undefined {
   const fromBinding = env[key];
@@ -56,7 +53,11 @@ function bearerToken(request: Request): string {
   const header = request.headers.get("authorization") ?? "";
   const match = /^Bearer\s+(.+)$/i.exec(header);
   if (!match?.[1]) {
-    throw new ApiError(401, "AUTH_REQUIRED", "A Bearer access token is required.");
+    throw new ApiError(
+      401,
+      "AUTH_REQUIRED",
+      "A Bearer access token is required.",
+    );
   }
   return match[1];
 }
@@ -82,19 +83,31 @@ async function verifyAccessToken(
       ...(audience ? { audience } : {}),
     });
     if (!payload.sub) {
-      throw new ApiError(401, "AUTH_SUBJECT_MISSING", "Token subject is missing.");
+      throw new ApiError(
+        401,
+        "AUTH_SUBJECT_MISSING",
+        "Token subject is missing.",
+      );
     }
     return payload.sub;
   } catch (error) {
     if (error instanceof ApiError) throw error;
-    throw new ApiError(401, "AUTH_INVALID", "The access token is invalid or expired.");
+    throw new ApiError(
+      401,
+      "AUTH_INVALID",
+      "The access token is invalid or expired.",
+    );
   }
 }
 
 function requestedOrgId(request: Request): string | null {
   const value = request.headers.get("x-prop-ops-org")?.trim();
   if (!value) return null;
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    )
+  ) {
     throw new ApiError(400, "ORG_INVALID", "x-prop-ops-org must be a UUID.");
   }
   return value;
@@ -120,7 +133,11 @@ async function resolveIdentity(
   );
 
   if (result.rows.length === 0) {
-    throw new ApiError(403, "MEMBERSHIP_REQUIRED", "No active Property Ops membership was found.");
+    throw new ApiError(
+      403,
+      "MEMBERSHIP_REQUIRED",
+      "No active Property Ops membership was found.",
+    );
   }
   if (!explicitOrgId && result.rows.length !== 1) {
     throw new ApiError(
@@ -153,7 +170,11 @@ async function resolveIdentity(
 export async function withTenantTransaction<T>(
   request: Request,
   rawEnv: unknown,
-  operation: (client: ClientBase, identity: TenantIdentity, env: RuntimeEnv) => Promise<T>,
+  operation: (
+    client: ClientBase,
+    identity: TenantIdentity,
+    env: RuntimeEnv,
+  ) => Promise<T>,
 ): Promise<T> {
   const env =
     rawEnv && typeof rawEnv === "object"
@@ -218,7 +239,11 @@ export function apiErrorResponse(error: unknown): Response {
   }
   console.error(error);
   return jsonResponse(
-    { ok: false, error: "INTERNAL_ERROR", message: "The request could not be completed." },
+    {
+      ok: false,
+      error: "INTERNAL_ERROR",
+      message: "The request could not be completed.",
+    },
     500,
   );
 }
