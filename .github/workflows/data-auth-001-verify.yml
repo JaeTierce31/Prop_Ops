@@ -37,6 +37,9 @@ jobs:
             npm install --legacy-peer-deps --no-audit --no-fund
           fi
 
+      - name: Normalize formatting
+        run: npx prettier --write "src/**/*.{ts,tsx,css}" "db/**/*.sql" eslint.config.js vite.config.ts vitest.config.ts tsconfig.json package.json
+
       - name: Typecheck
         run: npm run typecheck
 
@@ -49,13 +52,13 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Freeze generated package lock
+      - name: Freeze verified source and dependency graph
         shell: bash
         run: |
-          if ! git diff --quiet -- package-lock.json; then
+          if ! git diff --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "build(data-auth): freeze npm dependency graph"
+            git add src db package-lock.json package.json
+            git commit -m "style(data-auth): normalize verified source"
             git push origin HEAD:prop-ops-data-auth-001
           fi
