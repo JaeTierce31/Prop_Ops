@@ -17,7 +17,6 @@ import {
   jsonResponse,
   requireEnv,
   withTenantTransaction,
-  type RuntimeEnv,
   type TenantIdentity,
 } from "./data-auth";
 
@@ -311,12 +310,13 @@ async function bootstrap(request: Request, rawEnv: unknown): Promise<Response> {
        RETURNING state, version`,
       [identity.orgId, MAIN_CASE_ID, JSON.stringify(seeded)],
     );
-    const aggregate = inserted.rows[0] ?? (await loadAggregate(client, MAIN_CASE_ID, false));
-    return {
-      ok: true,
-      state: "state" in aggregate ? aggregate.state : aggregate,
-      version: Number("version" in aggregate ? aggregate.version : 1),
-    };
+
+    const row = inserted.rows[0];
+    const aggregate = row
+      ? { state: row.state, version: Number(row.version) }
+      : await loadAggregate(client, MAIN_CASE_ID, false);
+
+    return { ok: true, ...aggregate };
   });
   return jsonResponse(result, 201);
 }
@@ -326,6 +326,7 @@ async function mutate(request: Request, env: unknown): Promise<Response> {
   if (!isAction(body.action)) {
     throw new ApiError(400, "ACTION_INVALID", "A recognized domain action is required.");
   }
+  const action = body.action;
   const expectedVersion = parseExpectedVersion(body.expectedVersion);
 
   const result = await withTenantTransaction(request, env, async (client, identity) => {
@@ -338,9 +339,9 @@ async function mutate(request: Request, env: unknown): Promise<Response> {
       );
     }
 
-    const actor = actorForAction(identity, body.action!, aggregate.state);
+    const actor = actorForAction(identity, action, aggregate.state);
     const now = Date.now();
-    const transition = dispatch(aggregate.state, body.action!, actor, now);
+    const transition = dispatch(aggregate.state, action, actor, now);
     const nextVersion = aggregate.version + 1;
 
     const updated = await client.query(
@@ -366,14 +367,14 @@ async function mutate(request: Request, env: unknown): Promise<Response> {
     await appendAuthoritativeAudit(
       client,
       identity,
-      body.action!,
+      action,
       actor,
       transition.ok,
       transition.reason,
       nextVersion,
     );
     if (transition.ok) {
-      await enqueueCommittedAction(client, identity, body.action!, nextVersion);
+      await enqueueCommittedAction(client, identity, action, nextVersion);
     }
 
     return {
