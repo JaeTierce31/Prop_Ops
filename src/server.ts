@@ -2,6 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { handlePropertyOpsApi } from "./server/property-ops-api";
 
 type ServerEntry = {
   fetch: (
@@ -56,6 +57,9 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const propertyOpsResponse = await handlePropertyOpsApi(request, env);
+      if (propertyOpsResponse) return propertyOpsResponse;
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
