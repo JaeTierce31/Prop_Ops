@@ -1,5 +1,21 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { dispatch, seedState, SEED_EPOCH, type Action, type Actor, type DemoState, type DispatchResult } from "./model";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import {
+  dispatch,
+  seedState,
+  SEED_EPOCH,
+  type Action,
+  type Actor,
+  type DemoState,
+  type DispatchResult,
+} from "./model";
 
 const KEY = "wg-maintenance-mvp-v1";
 
@@ -47,27 +63,45 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     if (hydrated.current) localStorage.setItem(KEY, JSON.stringify(state));
   }, [state]);
 
-  const run = useCallback((action: Action, actor: Actor, successText?: string) => {
-    const t = Math.max(Date.now(), (ref.current.events.at(-1)?.at ?? 0) + 1);
-    const r = dispatch(ref.current, action, actor, t);
-    ref.current = r.state;
-    setState(r.state);
-    setNow(t);
-    if (!r.ok) setNotice({ ok: false, text: `Denied: ${r.reason}`, id: t });
-    else if (successText) setNotice({ ok: true, text: successText, id: t });
-    return r;
-  }, []);
+  const run = useCallback(
+    (action: Action, actor: Actor, successText?: string) => {
+      const t = Math.max(Date.now(), (ref.current.events.at(-1)?.at ?? 0) + 1);
+      const r = dispatch(ref.current, action, actor, t);
+      ref.current = r.state;
+      setState(r.state);
+      setNow(t);
+      if (!r.ok) setNotice({ ok: false, text: `Denied: ${r.reason}`, id: t });
+      else if (successText) setNotice({ ok: true, text: successText, id: t });
+      return r;
+    },
+    [],
+  );
 
   const reset = useCallback(() => {
     const s = seedState(Date.now());
     ref.current = s;
     setState(s);
     setNow(Date.now());
-    setNotice({ ok: true, text: "Demo reset to the seeded scenario.", id: Date.now() });
+    setNotice({
+      ok: true,
+      text: "Demo reset to the seeded scenario.",
+      id: Date.now(),
+    });
   }, []);
 
   return (
-    <Ctx.Provider value={{ state, now, run, reset, notice, clearNotice: () => setNotice(null) }}>{children}</Ctx.Provider>
+    <Ctx.Provider
+      value={{
+        state,
+        now,
+        run,
+        reset,
+        notice,
+        clearNotice: () => setNotice(null),
+      }}
+    >
+      {children}
+    </Ctx.Provider>
   );
 }
 

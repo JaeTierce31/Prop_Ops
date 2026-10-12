@@ -9,12 +9,32 @@ export interface Actor {
 }
 
 export const ACTORS = {
-  resident: { role: "resident", id: "res-3b", name: "Resident, Unit 3B (synthetic)" },
-  manager: { role: "manager", id: "mgr-01", name: "M. Okafor · Manager (synthetic)" },
-  worker1: { role: "worker", id: "wkr-01", name: "D. Rivera · Technician (synthetic)" },
-  worker2: { role: "worker", id: "wkr-02", name: "S. Lin · Technician (synthetic)" },
+  resident: {
+    role: "resident",
+    id: "res-3b",
+    name: "Resident, Unit 3B (synthetic)",
+  },
+  manager: {
+    role: "manager",
+    id: "mgr-01",
+    name: "M. Okafor · Manager (synthetic)",
+  },
+  worker1: {
+    role: "worker",
+    id: "wkr-01",
+    name: "D. Rivera · Technician (synthetic)",
+  },
+  worker2: {
+    role: "worker",
+    id: "wkr-02",
+    name: "S. Lin · Technician (synthetic)",
+  },
   ops: { role: "ops", id: "ops-01", name: "Ops Auditor (synthetic)" },
-  ai: { role: "ai", id: "ai-normalizer", name: "AI Assistant (recommendation only)" },
+  ai: {
+    role: "ai",
+    id: "ai-normalizer",
+    name: "AI Assistant (recommendation only)",
+  },
   system: { role: "system", id: "system", name: "System" },
 } as const satisfies Record<string, Actor>;
 
@@ -24,7 +44,8 @@ export const SEED_EPOCH = Date.UTC(2026, 9, 7, 13, 0, 0);
 
 export const SEEDED_REPORT_TEXT =
   "The bathroom sink in my unit is leaking underneath the vanity. There's a puddle in the cabinet and it drips constantly when the tap runs.";
-export const SEEDED_PHOTO_CAPTION = "IMG_0412.jpg · under-sink cabinet, standing water (simulated)";
+export const SEEDED_PHOTO_CAPTION =
+  "IMG_0412.jpg · under-sink cabinet, standing water (simulated)";
 export const SEEDED_SCOPE =
   "Diagnose and repair under-sink leak at bathroom vanity. Replace supply line / P-trap washer as needed. Not-to-exceed $250 (synthetic).";
 
@@ -160,7 +181,12 @@ export interface DemoState {
 }
 
 export type Action =
-  | { type: "SUBMIT_REPORT"; caseId: string; text: string; photoCaption?: string | undefined }
+  | {
+      type: "SUBMIT_REPORT";
+      caseId: string;
+      text: string;
+      photoCaption?: string | undefined;
+    }
   | { type: "AI_NORMALIZE"; caseId: string }
   | { type: "CONFIRM_SUMMARY"; caseId: string }
   | { type: "TRIAGE"; caseId: string; severity: Severity; slaHours: number }
@@ -168,7 +194,13 @@ export type Action =
   | { type: "ASSIGN"; woId: string; workerId: string }
   | { type: "ACCEPT"; woId: string }
   | { type: "START"; woId: string }
-  | { type: "ADD_EVIDENCE"; woId: string; kind: EvidenceKind; caption: string; supersedes?: string | undefined }
+  | {
+      type: "ADD_EVIDENCE";
+      woId: string;
+      kind: EvidenceKind;
+      caption: string;
+      supersedes?: string | undefined;
+    }
   | { type: "REPORT_COMPLETE"; woId: string }
   | { type: "BEGIN_REVIEW"; woId: string }
   | { type: "VERIFY"; woId: string }
@@ -184,33 +216,97 @@ export type Action =
   | { type: "SET_PMS_MODE"; mode: PmsMode };
 export type ActionType = Action["type"];
 
-export const POLICY: Record<ActionType, { roles: Role[]; authority: string }> = {
-  SUBMIT_REPORT: { roles: ["resident"], authority: "Resident of record for unit" },
-  AI_NORMALIZE: { roles: ["ai"], authority: "Advisory only: structures the report, no decision rights" },
-  CONFIRM_SUMMARY: { roles: ["resident"], authority: "Reporting resident attests summary accuracy" },
-  TRIAGE: { roles: ["manager"], authority: "Manager triage authority (Policy MX-2)" },
-  AUTHORIZE_WORK: { roles: ["manager"], authority: "Manager work authorization (Policy MX-3, routine ≤ $500)" },
-  ASSIGN: { roles: ["manager"], authority: "Dispatcher assignment authority (Policy MX-4)" },
-  ACCEPT: { roles: ["worker"], authority: "Assigned technician on work order" },
-  START: { roles: ["worker"], authority: "Assigned technician on work order" },
-  ADD_EVIDENCE: { roles: ["worker"], authority: "Assigned technician; append-only evidence (Policy EV-1)" },
-  REPORT_COMPLETE: { roles: ["worker"], authority: "Performer completion report (not verification)" },
-  BEGIN_REVIEW: { roles: ["manager"], authority: "Manager verification authority (Policy VR-1)" },
-  VERIFY: { roles: ["manager"], authority: "Manager verification authority (Policy VR-1); verifier ≠ performer" },
-  REQUIRE_REWORK: { roles: ["manager"], authority: "Manager verification authority (Policy VR-1)" },
-  CONFIRM_OUTCOME: { roles: ["resident"], authority: "Reporting resident outcome acknowledgement" },
-  DISPUTE: { roles: ["resident"], authority: "Reporting resident dispute right (Policy RS-2)" },
-  MARK_SETTLEMENT_READY: {
-    roles: ["manager"],
-    authority: "Manager settlement readiness (Policy ST-1): needs VERIFIED, resident confirmation and reconciled PMS",
-  },
-  CLOSE: { roles: ["manager"], authority: "Manager closure authority (Policy CL-1)" },
-  GENERATE_RECEIPT: { roles: ["manager", "ops", "resident"], authority: "Read-only attestation of recorded facts" },
-  RECONCILE_EFFECT: { roles: ["ops", "manager"], authority: "Read-only reconciliation query to system of record" },
-  RETRY_EFFECT: { roles: ["ops"], authority: "Ops retry, only after reconciliation proves the write is absent" },
-  REPLAY_EFFECT: { roles: ["ops"], authority: "Idempotency check: replay with the same key" },
-  SET_PMS_MODE: { roles: ["ops"], authority: "Demo fault-injection control" },
-};
+export const POLICY: Record<ActionType, { roles: Role[]; authority: string }> =
+  {
+    SUBMIT_REPORT: {
+      roles: ["resident"],
+      authority: "Resident of record for unit",
+    },
+    AI_NORMALIZE: {
+      roles: ["ai"],
+      authority: "Advisory only: structures the report, no decision rights",
+    },
+    CONFIRM_SUMMARY: {
+      roles: ["resident"],
+      authority: "Reporting resident attests summary accuracy",
+    },
+    TRIAGE: {
+      roles: ["manager"],
+      authority: "Manager triage authority (Policy MX-2)",
+    },
+    AUTHORIZE_WORK: {
+      roles: ["manager"],
+      authority: "Manager work authorization (Policy MX-3, routine ≤ $500)",
+    },
+    ASSIGN: {
+      roles: ["manager"],
+      authority: "Dispatcher assignment authority (Policy MX-4)",
+    },
+    ACCEPT: {
+      roles: ["worker"],
+      authority: "Assigned technician on work order",
+    },
+    START: {
+      roles: ["worker"],
+      authority: "Assigned technician on work order",
+    },
+    ADD_EVIDENCE: {
+      roles: ["worker"],
+      authority: "Assigned technician; append-only evidence (Policy EV-1)",
+    },
+    REPORT_COMPLETE: {
+      roles: ["worker"],
+      authority: "Performer completion report (not verification)",
+    },
+    BEGIN_REVIEW: {
+      roles: ["manager"],
+      authority: "Manager verification authority (Policy VR-1)",
+    },
+    VERIFY: {
+      roles: ["manager"],
+      authority:
+        "Manager verification authority (Policy VR-1); verifier ≠ performer",
+    },
+    REQUIRE_REWORK: {
+      roles: ["manager"],
+      authority: "Manager verification authority (Policy VR-1)",
+    },
+    CONFIRM_OUTCOME: {
+      roles: ["resident"],
+      authority: "Reporting resident outcome acknowledgement",
+    },
+    DISPUTE: {
+      roles: ["resident"],
+      authority: "Reporting resident dispute right (Policy RS-2)",
+    },
+    MARK_SETTLEMENT_READY: {
+      roles: ["manager"],
+      authority:
+        "Manager settlement readiness (Policy ST-1): needs VERIFIED, resident confirmation and reconciled PMS",
+    },
+    CLOSE: {
+      roles: ["manager"],
+      authority: "Manager closure authority (Policy CL-1)",
+    },
+    GENERATE_RECEIPT: {
+      roles: ["manager", "ops", "resident"],
+      authority: "Read-only attestation of recorded facts",
+    },
+    RECONCILE_EFFECT: {
+      roles: ["ops", "manager"],
+      authority: "Read-only reconciliation query to system of record",
+    },
+    RETRY_EFFECT: {
+      roles: ["ops"],
+      authority:
+        "Ops retry, only after reconciliation proves the write is absent",
+    },
+    REPLAY_EFFECT: {
+      roles: ["ops"],
+      authority: "Idempotency check: replay with the same key",
+    },
+    SET_PMS_MODE: { roles: ["ops"], authority: "Demo fault-injection control" },
+  };
 
 export function fnv(input: string): string {
   let h = 0x811c9dc5;
@@ -226,7 +322,10 @@ function deny(msg: string): never {
   throw new Deny(msg);
 }
 
-type EventInput = Omit<AuditEvent, "seq" | "at" | "actorId" | "actorName" | "actorRole" | "prevHash" | "hash">;
+type EventInput = Omit<
+  AuditEvent,
+  "seq" | "at" | "actorId" | "actorName" | "actorRole" | "prevHash" | "hash"
+>;
 
 function appendEvent(s: DemoState, now: number, actor: Actor, p: EventInput) {
   const last = s.events[s.events.length - 1];
@@ -239,7 +338,9 @@ function appendEvent(s: DemoState, now: number, actor: Actor, p: EventInput) {
     ...p,
     prevHash: last ? last.hash : "GENESIS",
   };
-  s.events.push(Object.freeze({ ...body, hash: fnv(JSON.stringify(body)) }) as AuditEvent);
+  s.events.push(
+    Object.freeze({ ...body, hash: fnv(JSON.stringify(body)) }) as AuditEvent,
+  );
 }
 
 export function verifyChain(events: AuditEvent[]): boolean {
@@ -256,9 +357,17 @@ export function verifyChain(events: AuditEvent[]): boolean {
 export function normalizeReport(text: string): AiSummary {
   const t = text.toLowerCase();
   const plumbing = /leak|drip|sink|faucet|pipe|water|drain|toilet/.test(t);
-  const location = /bath|vanity/.test(t) ? "Bathroom vanity sink" : /kitchen/.test(t) ? "Kitchen sink" : "Unspecified fixture";
+  const location = /bath|vanity/.test(t)
+    ? "Bathroom vanity sink"
+    : /kitchen/.test(t)
+      ? "Kitchen sink"
+      : "Unspecified fixture";
   const emergency = /flood|burst|ceiling|electric|sewage/.test(t);
-  const sev: Severity = emergency ? "EMERGENCY" : /leak|drip|puddle/.test(t) ? "PRIORITY" : "ROUTINE";
+  const sev: Severity = emergency
+    ? "EMERGENCY"
+    : /leak|drip|puddle/.test(t)
+      ? "PRIORITY"
+      : "ROUTINE";
   return {
     label: "AI RECOMMENDATION — NOT AN AUTHORIZATION",
     category: plumbing ? "Plumbing · Fixture leak" : "General maintenance",
@@ -277,24 +386,31 @@ export function normalizeReport(text: string): AiSummary {
 function getCase(s: DemoState, id: string): Case {
   const c = s.cases[id];
   if (!c) deny(`Case ${id} not found.`);
-  if (c.background) deny(`${id} is a read-only background seed record in this demo.`);
+  if (c.background)
+    deny(`${id} is a read-only background seed record in this demo.`);
   return c;
 }
 function getWo(s: DemoState, id: string): { wo: WorkOrder; c: Case } {
   const wo = s.workOrders[id];
   if (!wo) deny(`Work order ${id} not found.`);
   const c = getCase(s, wo.caseId);
-  if (wo.supersededBy) deny(`${id} has been superseded by ${wo.supersededBy}; act on the current revision.`);
+  if (wo.supersededBy)
+    deny(
+      `${id} has been superseded by ${wo.supersededBy}; act on the current revision.`,
+    );
   return { wo, c };
 }
 function expectStatus<T extends string>(actual: T, allowed: T[], what: string) {
-  if (!allowed.includes(actual)) deny(`${what} is ${actual}; this action requires ${allowed.join(" or ")}.`);
+  if (!allowed.includes(actual))
+    deny(`${what} is ${actual}; this action requires ${allowed.join(" or ")}.`);
 }
 function mustBeAssignee(wo: WorkOrder, actor: Actor) {
-  if (wo.assigneeId !== actor.id) deny("Only the assigned technician may act on this work order.");
+  if (wo.assigneeId !== actor.id)
+    deny("Only the assigned technician may act on this work order.");
 }
 function mustBeResidentOfRecord(c: Case, actor: Actor) {
-  if (c.residentId !== actor.id) deny("Only the resident of record for this unit may do this.");
+  if (c.residentId !== actor.id)
+    deny("Only the resident of record for this unit may do this.");
 }
 export function isSuperseded(s: DemoState, evidenceId: string) {
   return s.evidence.some((e) => e.supersedes === evidenceId);
@@ -303,14 +419,22 @@ export function currentEvidence(s: DemoState, woId: string) {
   return s.evidence.filter((e) => e.woId === woId && !isSuperseded(s, e.id));
 }
 export function unresolvedEffects(s: DemoState, caseId: string) {
-  return s.effects.filter((e) => e.caseId === caseId && e.status !== "CONFIRMED");
+  return s.effects.filter(
+    (e) => e.caseId === caseId && e.status !== "CONFIRMED",
+  );
 }
 
 function addEvidence(
   s: DemoState,
   now: number,
   actor: Actor,
-  p: { caseId: string; woId?: string; kind: EvidenceKind; caption: string; supersedes?: string | undefined },
+  p: {
+    caseId: string;
+    woId?: string;
+    kind: EvidenceKind;
+    caption: string;
+    supersedes?: string | undefined;
+  },
 ): Evidence {
   const id = `EV-${String(s.evidence.length + 1).padStart(3, "0")}`;
   const e: Evidence = {
@@ -325,7 +449,14 @@ function addEvidence(
   return e;
 }
 
-function emitEffect(s: DemoState, now: number, actor: Actor, kind: string, caseId: string, key: string) {
+function emitEffect(
+  s: DemoState,
+  now: number,
+  actor: Actor,
+  kind: string,
+  caseId: string,
+  key: string,
+) {
   const existing = s.effects.find((e) => e.key === key);
   if (existing) {
     appendEvent(s, now, actor, {
@@ -387,15 +518,24 @@ function targetOf(a: Action): string {
   return "demo";
 }
 
-export function dispatch(state: DemoState, action: Action, actor: Actor, now: number): DispatchResult {
-  const pol = (POLICY as Partial<Record<string, { roles: Role[]; authority: string }>>)[action.type];
+export function dispatch(
+  state: DemoState,
+  action: Action,
+  actor: Actor,
+  now: number,
+): DispatchResult {
+  const pol = (
+    POLICY as Partial<Record<string, { roles: Role[]; authority: string }>>
+  )[action.type];
   const denied = (reason: string): DispatchResult => {
     const s = structuredClone(state);
     appendEvent(s, now, actor, {
       action: `DENIED:${action.type}`,
       entity: "POLICY",
       entityId: targetOf(action),
-      authority: pol ? `Requires: ${pol.authority}` : "No policy entry. Denied by default.",
+      authority: pol
+        ? `Requires: ${pol.authority}`
+        : "No policy entry. Denied by default.",
       outcome: "DENIED",
       note: reason,
     });
@@ -403,7 +543,9 @@ export function dispatch(state: DemoState, action: Action, actor: Actor, now: nu
   };
   if (!pol) return denied("Unknown action. Denied by default.");
   if (!pol.roles.includes(actor.role)) {
-    return denied(`Role "${actor.role}" is not permitted to ${action.type}. Permitted: ${pol.roles.join(", ")}.`);
+    return denied(
+      `Role "${actor.role}" is not permitted to ${action.type}. Permitted: ${pol.roles.join(", ")}.`,
+    );
   }
   const next = structuredClone(state);
   try {
@@ -415,22 +557,44 @@ export function dispatch(state: DemoState, action: Action, actor: Actor, now: nu
   }
 }
 
-function apply(s: DemoState, a: Action, actor: Actor, now: number, authority: string) {
-  const log = (p: Omit<EventInput, "authority" | "outcome"> & { authority?: string }) =>
-    appendEvent(s, now, actor, { authority, outcome: "OK", ...p });
+function apply(
+  s: DemoState,
+  a: Action,
+  actor: Actor,
+  now: number,
+  authority: string,
+) {
+  const log = (
+    p: Omit<EventInput, "authority" | "outcome"> & { authority?: string },
+  ) => appendEvent(s, now, actor, { authority, outcome: "OK", ...p });
 
   switch (a.type) {
     case "SUBMIT_REPORT": {
       const c = getCase(s, a.caseId);
       mustBeResidentOfRecord(c, actor);
       expectStatus(c.status, ["DRAFT"], "Case");
-      if (a.text.trim().length < 10) deny("Please describe the issue (at least 10 characters).");
+      if (a.text.trim().length < 10)
+        deny("Please describe the issue (at least 10 characters).");
       c.reportText = a.text.trim();
       c.reportedAt = now;
       const ids: string[] = [];
-      if (a.photoCaption) ids.push(addEvidence(s, now, actor, { caseId: c.id, kind: "RESIDENT_PHOTO", caption: a.photoCaption }).id);
+      if (a.photoCaption)
+        ids.push(
+          addEvidence(s, now, actor, {
+            caseId: c.id,
+            kind: "RESIDENT_PHOTO",
+            caption: a.photoCaption,
+          }).id,
+        );
       c.status = "REPORTED";
-      log({ action: "REPORT_SUBMITTED", entity: "CASE", entityId: c.id, from: "DRAFT", to: "REPORTED", evidenceIds: ids });
+      log({
+        action: "REPORT_SUBMITTED",
+        entity: "CASE",
+        entityId: c.id,
+        from: "DRAFT",
+        to: "REPORTED",
+        evidenceIds: ids,
+      });
       return;
     }
     case "AI_NORMALIZE": {
@@ -438,7 +602,14 @@ function apply(s: DemoState, a: Action, actor: Actor, now: number, authority: st
       expectStatus(c.status, ["REPORTED"], "Case");
       c.summary = normalizeReport(c.reportText ?? "");
       c.status = "NORMALIZED";
-      log({ action: "AI_SUMMARY_PROPOSED", entity: "CASE", entityId: c.id, from: "REPORTED", to: "NORMALIZED", note: `Recommendation only: ${c.summary.category}, ${c.summary.recommendedSeverity}, ${c.summary.recommendedSlaHours}h SLA.` });
+      log({
+        action: "AI_SUMMARY_PROPOSED",
+        entity: "CASE",
+        entityId: c.id,
+        from: "REPORTED",
+        to: "NORMALIZED",
+        note: `Recommendation only: ${c.summary.category}, ${c.summary.recommendedSeverity}, ${c.summary.recommendedSlaHours}h SLA.`,
+      });
       return;
     }
     case "CONFIRM_SUMMARY": {
@@ -447,20 +618,35 @@ function apply(s: DemoState, a: Action, actor: Actor, now: number, authority: st
       expectStatus(c.status, ["NORMALIZED"], "Case");
       if (c.summaryConfirmed) deny("Summary already confirmed.");
       c.summaryConfirmed = true;
-      log({ action: "SUMMARY_CONFIRMED_BY_RESIDENT", entity: "CASE", entityId: c.id, from: "NORMALIZED", to: "NORMALIZED" });
+      log({
+        action: "SUMMARY_CONFIRMED_BY_RESIDENT",
+        entity: "CASE",
+        entityId: c.id,
+        from: "NORMALIZED",
+        to: "NORMALIZED",
+      });
       return;
     }
     case "TRIAGE": {
       const c = getCase(s, a.caseId);
       expectStatus(c.status, ["NORMALIZED"], "Case");
-      if (!c.summaryConfirmed) deny("The resident must confirm the structured summary before triage.");
+      if (!c.summaryConfirmed)
+        deny("The resident must confirm the structured summary before triage.");
       if (!(a.slaHours > 0)) deny("SLA hours must be positive.");
       c.severity = a.severity;
       c.slaHours = a.slaHours;
       c.slaDueAt = (c.reportedAt ?? now) + a.slaHours * 3600_000;
       c.status = "TRIAGED";
-      const override = c.summary && c.summary.recommendedSeverity !== a.severity;
-      log({ action: "CASE_TRIAGED", entity: "CASE", entityId: c.id, from: "NORMALIZED", to: "TRIAGED", note: `${a.severity}, ${a.slaHours}h SLA.${override ? " Manager overrode AI recommendation." : " Manager adopted AI recommendation."}` });
+      const override =
+        c.summary && c.summary.recommendedSeverity !== a.severity;
+      log({
+        action: "CASE_TRIAGED",
+        entity: "CASE",
+        entityId: c.id,
+        from: "NORMALIZED",
+        to: "TRIAGED",
+        note: `${a.severity}, ${a.slaHours}h SLA.${override ? " Manager overrode AI recommendation." : " Manager adopted AI recommendation."}`,
+      });
       return;
     }
     case "AUTHORIZE_WORK": {
@@ -486,9 +672,30 @@ function apply(s: DemoState, a: Action, actor: Actor, now: number, authority: st
       c.currentWoId = wo.id;
       c.status = "AUTHORIZED";
       if (from === "DISPUTED") c.residentOutcome = undefined;
-      log({ action: "WORK_AUTHORIZED", entity: "CASE", entityId: c.id, from, to: "AUTHORIZED" });
-      log({ action: "WORK_ORDER_CREATED", entity: "WORK_ORDER", entityId: wo.id, to: "AUTHORIZED", note: prev ? `Revision ${rev}; supersedes ${prev.id} (dispute reopen).` : `Revision ${rev}.` });
-      emitEffect(s, now, actor, "CREATE_WORK_ORDER", c.id, `pms:wo:${wo.id}:create`);
+      log({
+        action: "WORK_AUTHORIZED",
+        entity: "CASE",
+        entityId: c.id,
+        from,
+        to: "AUTHORIZED",
+      });
+      log({
+        action: "WORK_ORDER_CREATED",
+        entity: "WORK_ORDER",
+        entityId: wo.id,
+        to: "AUTHORIZED",
+        note: prev
+          ? `Revision ${rev}; supersedes ${prev.id} (dispute reopen).`
+          : `Revision ${rev}.`,
+      });
+      emitEffect(
+        s,
+        now,
+        actor,
+        "CREATE_WORK_ORDER",
+        c.id,
+        `pms:wo:${wo.id}:create`,
+      );
       return;
     }
     case "ASSIGN": {
@@ -500,35 +707,75 @@ function apply(s: DemoState, a: Action, actor: Actor, now: number, authority: st
       wo.status = "ASSIGNED";
       const cFrom = c.status;
       c.status = "IN_WORK";
-      log({ action: "WORK_ORDER_ASSIGNED", entity: "WORK_ORDER", entityId: wo.id, from: "AUTHORIZED", to: "ASSIGNED", note: `Assigned to ${w.name}.` });
-      if (cFrom !== "IN_WORK") log({ action: "CASE_IN_WORK", entity: "CASE", entityId: c.id, from: cFrom, to: "IN_WORK" });
+      log({
+        action: "WORK_ORDER_ASSIGNED",
+        entity: "WORK_ORDER",
+        entityId: wo.id,
+        from: "AUTHORIZED",
+        to: "ASSIGNED",
+        note: `Assigned to ${w.name}.`,
+      });
+      if (cFrom !== "IN_WORK")
+        log({
+          action: "CASE_IN_WORK",
+          entity: "CASE",
+          entityId: c.id,
+          from: cFrom,
+          to: "IN_WORK",
+        });
       return;
     }
     case "ACCEPT":
     case "START": {
       const { wo } = getWo(s, a.woId);
       mustBeAssignee(wo, actor);
-      const [from, to] = a.type === "ACCEPT" ? (["ASSIGNED", "ACCEPTED"] as const) : (["ACCEPTED", "IN_PROGRESS"] as const);
+      const [from, to] =
+        a.type === "ACCEPT"
+          ? (["ASSIGNED", "ACCEPTED"] as const)
+          : (["ACCEPTED", "IN_PROGRESS"] as const);
       expectStatus(wo.status, [from], "Work order");
       wo.status = to;
-      log({ action: a.type === "ACCEPT" ? "ASSIGNMENT_ACCEPTED" : "WORK_STARTED", entity: "WORK_ORDER", entityId: wo.id, from, to });
+      log({
+        action: a.type === "ACCEPT" ? "ASSIGNMENT_ACCEPTED" : "WORK_STARTED",
+        entity: "WORK_ORDER",
+        entityId: wo.id,
+        from,
+        to,
+      });
       return;
     }
     case "ADD_EVIDENCE": {
       const { wo } = getWo(s, a.woId);
       mustBeAssignee(wo, actor);
       expectStatus(wo.status, ["IN_PROGRESS"], "Work order");
-      if (!["BEFORE", "AFTER", "NOTE"].includes(a.kind)) deny("Technicians may add BEFORE, AFTER or NOTE evidence only.");
+      if (!["BEFORE", "AFTER", "NOTE"].includes(a.kind))
+        deny("Technicians may add BEFORE, AFTER or NOTE evidence only.");
       if (a.caption.trim().length < 3) deny("Evidence needs a caption.");
       if (a.supersedes) {
         const old = s.evidence.find((e) => e.id === a.supersedes);
-        if (!old || old.woId !== wo.id) deny("Can only correct evidence on this work order.");
+        if (!old || old.woId !== wo.id)
+          deny("Can only correct evidence on this work order.");
         if (old.byId !== actor.id) deny("Can only correct your own evidence.");
-        if (old.kind !== a.kind) deny("A correction must keep the same evidence type.");
+        if (old.kind !== a.kind)
+          deny("A correction must keep the same evidence type.");
         if (isSuperseded(s, old.id)) deny(`${old.id} is already superseded.`);
       }
-      const e = addEvidence(s, now, actor, { caseId: wo.caseId, woId: wo.id, kind: a.kind, caption: a.caption.trim(), supersedes: a.supersedes });
-      log({ action: a.supersedes ? "EVIDENCE_SUPERSEDED" : "EVIDENCE_APPENDED", entity: "EVIDENCE", entityId: e.id, evidenceIds: [e.id], note: a.supersedes ? `${e.id} supersedes ${a.supersedes}; original retained.` : `${a.kind} evidence on ${wo.id}.` });
+      const e = addEvidence(s, now, actor, {
+        caseId: wo.caseId,
+        woId: wo.id,
+        kind: a.kind,
+        caption: a.caption.trim(),
+        supersedes: a.supersedes,
+      });
+      log({
+        action: a.supersedes ? "EVIDENCE_SUPERSEDED" : "EVIDENCE_APPENDED",
+        entity: "EVIDENCE",
+        entityId: e.id,
+        evidenceIds: [e.id],
+        note: a.supersedes
+          ? `${e.id} supersedes ${a.supersedes}; original retained.`
+          : `${a.kind} evidence on ${wo.id}.`,
+      });
       return;
     }
     case "REPORT_COMPLETE": {
@@ -536,31 +783,71 @@ function apply(s: DemoState, a: Action, actor: Actor, now: number, authority: st
       mustBeAssignee(wo, actor);
       expectStatus(wo.status, ["IN_PROGRESS"], "Work order");
       const cur = currentEvidence(s, wo.id);
-      if (!cur.some((e) => e.kind === "BEFORE")) deny("A BEFORE photo is required before reporting complete.");
-      if (!cur.some((e) => e.kind === "AFTER")) deny("An AFTER photo is required before reporting complete.");
+      if (!cur.some((e) => e.kind === "BEFORE"))
+        deny("A BEFORE photo is required before reporting complete.");
+      if (!cur.some((e) => e.kind === "AFTER"))
+        deny("An AFTER photo is required before reporting complete.");
       wo.status = "WORK_REPORTED_COMPLETE";
-      log({ action: "WORK_REPORTED_COMPLETE", entity: "WORK_ORDER", entityId: wo.id, from: "IN_PROGRESS", to: "WORK_REPORTED_COMPLETE", evidenceIds: cur.map((e) => e.id), note: "Performer claim only. Not verified." });
+      log({
+        action: "WORK_REPORTED_COMPLETE",
+        entity: "WORK_ORDER",
+        entityId: wo.id,
+        from: "IN_PROGRESS",
+        to: "WORK_REPORTED_COMPLETE",
+        evidenceIds: cur.map((e) => e.id),
+        note: "Performer claim only. Not verified.",
+      });
       return;
     }
     case "BEGIN_REVIEW": {
       const { wo } = getWo(s, a.woId);
       expectStatus(wo.status, ["WORK_REPORTED_COMPLETE"], "Work order");
       wo.status = "EVIDENCE_REVIEW";
-      log({ action: "EVIDENCE_REVIEW_STARTED", entity: "WORK_ORDER", entityId: wo.id, from: "WORK_REPORTED_COMPLETE", to: "EVIDENCE_REVIEW" });
+      log({
+        action: "EVIDENCE_REVIEW_STARTED",
+        entity: "WORK_ORDER",
+        entityId: wo.id,
+        from: "WORK_REPORTED_COMPLETE",
+        to: "EVIDENCE_REVIEW",
+      });
       return;
     }
     case "VERIFY": {
       const { wo, c } = getWo(s, a.woId);
       expectStatus(wo.status, ["EVIDENCE_REVIEW"], "Work order");
-      if (wo.assigneeId === actor.id) deny("Separation of duties: the performer cannot verify their own work.");
+      if (wo.assigneeId === actor.id)
+        deny(
+          "Separation of duties: the performer cannot verify their own work.",
+        );
       wo.status = "VERIFIED";
       wo.verifiedBy = actor.id;
       wo.verifiedAt = now;
       c.status = "VERIFIED";
       c.residentOutcome = undefined;
-      log({ action: "WORK_VERIFIED", entity: "WORK_ORDER", entityId: wo.id, from: "EVIDENCE_REVIEW", to: "VERIFIED", evidenceIds: currentEvidence(s, wo.id).map((e) => e.id) });
-      log({ action: "CASE_VERIFIED", entity: "CASE", entityId: c.id, from: "IN_WORK", to: "VERIFIED", note: "Verified ≠ closed. Awaiting resident outcome." });
-      emitEffect(s, now, actor, "UPDATE_WO_STATUS_VERIFIED", c.id, `pms:wo:${wo.id}:status:verified`);
+      log({
+        action: "WORK_VERIFIED",
+        entity: "WORK_ORDER",
+        entityId: wo.id,
+        from: "EVIDENCE_REVIEW",
+        to: "VERIFIED",
+        evidenceIds: currentEvidence(s, wo.id).map((e) => e.id),
+      });
+      log({
+        action: "CASE_VERIFIED",
+        entity: "CASE",
+        entityId: c.id,
+        from: "IN_WORK",
+        to: "VERIFIED",
+        note: "Verified ≠ closed. Awaiting resident outcome.",
+      });
+      emitEffect(
+        s,
+        now,
+        actor,
+        "UPDATE_WO_STATUS_VERIFIED",
+        c.id,
+        `pms:wo:${wo.id}:status:verified`,
+      );
       return;
     }
     case "REQUIRE_REWORK": {
@@ -586,8 +873,22 @@ function apply(s: DemoState, a: Action, actor: Actor, now: number, authority: st
       s.workOrders[nwo.id] = nwo;
       c.woIds.push(nwo.id);
       c.currentWoId = nwo.id;
-      log({ action: "REWORK_REQUIRED", entity: "WORK_ORDER", entityId: wo.id, from: "EVIDENCE_REVIEW", to: "REWORK_REQUIRED", note: wo.reworkReason });
-      log({ action: "REWORK_ORDER_ISSUED", entity: "WORK_ORDER", entityId: nwo.id, to: "ASSIGNED", authority: `Rework under original authorization by ${wo.authorizedBy}`, note: `Supersedes ${wo.id}; prior evidence retained.` });
+      log({
+        action: "REWORK_REQUIRED",
+        entity: "WORK_ORDER",
+        entityId: wo.id,
+        from: "EVIDENCE_REVIEW",
+        to: "REWORK_REQUIRED",
+        note: wo.reworkReason,
+      });
+      log({
+        action: "REWORK_ORDER_ISSUED",
+        entity: "WORK_ORDER",
+        entityId: nwo.id,
+        to: "ASSIGNED",
+        authority: `Rework under original authorization by ${wo.authorizedBy}`,
+        note: `Supersedes ${wo.id}; prior evidence retained.`,
+      });
       return;
     }
     case "CONFIRM_OUTCOME": {
@@ -596,40 +897,90 @@ function apply(s: DemoState, a: Action, actor: Actor, now: number, authority: st
       expectStatus(c.status, ["VERIFIED"], "Case");
       if (c.residentOutcome) deny("Outcome already recorded.");
       c.residentOutcome = "CONFIRMED";
-      log({ action: "RESIDENT_CONFIRMED_OUTCOME", entity: "CASE", entityId: c.id, from: "VERIFIED", to: "VERIFIED" });
+      log({
+        action: "RESIDENT_CONFIRMED_OUTCOME",
+        entity: "CASE",
+        entityId: c.id,
+        from: "VERIFIED",
+        to: "VERIFIED",
+      });
       return;
     }
     case "DISPUTE": {
       const c = getCase(s, a.caseId);
       mustBeResidentOfRecord(c, actor);
       expectStatus(c.status, ["VERIFIED"], "Case");
-      if (a.reason.trim().length < 3) deny("Please describe what is still wrong.");
+      if (a.reason.trim().length < 3)
+        deny("Please describe what is still wrong.");
       c.status = "DISPUTED";
       c.residentOutcome = "DISPUTED";
       c.disputeReason = a.reason.trim();
-      const e = addEvidence(s, now, actor, { caseId: c.id, kind: "NOTE", caption: `Dispute: ${c.disputeReason}` });
-      log({ action: "RESIDENT_DISPUTED", entity: "CASE", entityId: c.id, from: "VERIFIED", to: "DISPUTED", evidenceIds: [e.id], note: c.disputeReason });
+      const e = addEvidence(s, now, actor, {
+        caseId: c.id,
+        kind: "NOTE",
+        caption: `Dispute: ${c.disputeReason}`,
+      });
+      log({
+        action: "RESIDENT_DISPUTED",
+        entity: "CASE",
+        entityId: c.id,
+        from: "VERIFIED",
+        to: "DISPUTED",
+        evidenceIds: [e.id],
+        note: c.disputeReason,
+      });
       return;
     }
     case "MARK_SETTLEMENT_READY": {
       const c = getCase(s, a.caseId);
       expectStatus(c.status, ["VERIFIED"], "Case");
       const wo = c.currentWoId ? s.workOrders[c.currentWoId] : undefined;
-      if (!wo || wo.status !== "VERIFIED") deny("The current work order is not VERIFIED.");
-      if (c.residentOutcome !== "CONFIRMED") deny("The resident has not confirmed the outcome.");
-      if (unresolvedEffects(s, c.id).length) deny("PMS effects are unreconciled. Reconcile in Audit first.");
+      if (!wo || wo.status !== "VERIFIED")
+        deny("The current work order is not VERIFIED.");
+      if (c.residentOutcome !== "CONFIRMED")
+        deny("The resident has not confirmed the outcome.");
+      if (unresolvedEffects(s, c.id).length)
+        deny("PMS effects are unreconciled. Reconcile in Audit first.");
       c.status = "SETTLEMENT_READY";
-      log({ action: "SETTLEMENT_READY", entity: "CASE", entityId: c.id, from: "VERIFIED", to: "SETTLEMENT_READY", note: `Verified WO ${wo.id} by ${wo.verifiedBy}. No payment executed (demo).` });
-      emitEffect(s, now, actor, "POST_COMPLETION_RECORD", c.id, `pms:case:${c.id}:completion`);
+      log({
+        action: "SETTLEMENT_READY",
+        entity: "CASE",
+        entityId: c.id,
+        from: "VERIFIED",
+        to: "SETTLEMENT_READY",
+        note: `Verified WO ${wo.id} by ${wo.verifiedBy}. No payment executed (demo).`,
+      });
+      emitEffect(
+        s,
+        now,
+        actor,
+        "POST_COMPLETION_RECORD",
+        c.id,
+        `pms:case:${c.id}:completion`,
+      );
       return;
     }
     case "CLOSE": {
       const c = getCase(s, a.caseId);
       expectStatus(c.status, ["SETTLEMENT_READY"], "Case");
-      if (unresolvedEffects(s, c.id).length) deny("PMS effects are unreconciled. Reconcile in Audit first.");
+      if (unresolvedEffects(s, c.id).length)
+        deny("PMS effects are unreconciled. Reconcile in Audit first.");
       c.status = "CLOSED";
-      log({ action: "CASE_CLOSED", entity: "CASE", entityId: c.id, from: "SETTLEMENT_READY", to: "CLOSED" });
-      emitEffect(s, now, actor, "CLOSE_SERVICE_REQUEST", c.id, `pms:case:${c.id}:close`);
+      log({
+        action: "CASE_CLOSED",
+        entity: "CASE",
+        entityId: c.id,
+        from: "SETTLEMENT_READY",
+        to: "CLOSED",
+      });
+      emitEffect(
+        s,
+        now,
+        actor,
+        "CLOSE_SERVICE_REQUEST",
+        c.id,
+        `pms:case:${c.id}:close`,
+      );
       return;
     }
     case "GENERATE_RECEIPT": {
@@ -638,13 +989,19 @@ function apply(s: DemoState, a: Action, actor: Actor, now: number, authority: st
       expectStatus(c.status, ["SETTLEMENT_READY", "CLOSED"], "Case");
       const head = s.events[s.events.length - 1]?.hash ?? "";
       c.receiptId = `RCPT-${fnv(`${c.id}|${head}`).toUpperCase()}`;
-      log({ action: "RECEIPT_GENERATED", entity: "CASE", entityId: c.id, note: `${c.receiptId}, anchored at chain head ${head}.` });
+      log({
+        action: "RECEIPT_GENERATED",
+        entity: "CASE",
+        entityId: c.id,
+        note: `${c.receiptId}, anchored at chain head ${head}.`,
+      });
       return;
     }
     case "RECONCILE_EFFECT": {
       const eff = s.effects.find((e) => e.id === a.effectId);
       if (!eff) deny("Effect not found.");
-      if (eff.status === "CONFIRMED") deny("Effect already confirmed; nothing to reconcile.");
+      if (eff.status === "CONFIRMED")
+        deny("Effect already confirmed; nothing to reconcile.");
       const ref = s.pmsLedger[eff.key];
       const from = eff.status;
       eff.updatedAt = now;
@@ -652,21 +1009,39 @@ function apply(s: DemoState, a: Action, actor: Actor, now: number, authority: st
         eff.status = "CONFIRMED";
         eff.externalRef = ref;
       } else eff.status = "NOT_FOUND";
-      log({ action: "PMS_RECONCILED", entity: "EXTERNAL", entityId: eff.id, from, to: eff.status, note: ref ? `Found existing write ${ref} in PMS. Marked confirmed with no resend.` : "No write found in PMS. A single retry is now permitted." });
+      log({
+        action: "PMS_RECONCILED",
+        entity: "EXTERNAL",
+        entityId: eff.id,
+        from,
+        to: eff.status,
+        note: ref
+          ? `Found existing write ${ref} in PMS. Marked confirmed with no resend.`
+          : "No write found in PMS. A single retry is now permitted.",
+      });
       return;
     }
     case "RETRY_EFFECT": {
       const eff = s.effects.find((e) => e.id === a.effectId);
       if (!eff) deny("Effect not found.");
-      if (eff.status === "UNKNOWN") deny("Outcome is ambiguous. Blind retry blocked; reconcile first.");
-      if (eff.status === "CONFIRMED") deny("Effect already confirmed; a retry would duplicate the write.");
+      if (eff.status === "UNKNOWN")
+        deny("Outcome is ambiguous. Blind retry blocked; reconcile first.");
+      if (eff.status === "CONFIRMED")
+        deny("Effect already confirmed; a retry would duplicate the write.");
       const ref = `YDI-${fnv(eff.key).slice(0, 6).toUpperCase()}`;
       s.pmsLedger[eff.key] = ref;
       eff.status = "CONFIRMED";
       eff.externalRef = ref;
       eff.attempts += 1;
       eff.updatedAt = now;
-      log({ action: "PMS_RETRY_CONFIRMED", entity: "EXTERNAL", entityId: eff.id, from: "NOT_FOUND", to: "CONFIRMED", note: `Retried with same key ${eff.key}; ${ref}.` });
+      log({
+        action: "PMS_RETRY_CONFIRMED",
+        entity: "EXTERNAL",
+        entityId: eff.id,
+        from: "NOT_FOUND",
+        to: "CONFIRMED",
+        note: `Retried with same key ${eff.key}; ${ref}.`,
+      });
       return;
     }
     case "REPLAY_EFFECT": {
@@ -677,7 +1052,13 @@ function apply(s: DemoState, a: Action, actor: Actor, now: number, authority: st
     }
     case "SET_PMS_MODE": {
       s.pmsMode = a.mode;
-      log({ action: "PMS_FAULT_MODE_SET", entity: "SYSTEM", entityId: "mock-yardi", to: a.mode, note: "Applies to the next outbound effect only." });
+      log({
+        action: "PMS_FAULT_MODE_SET",
+        entity: "SYSTEM",
+        entityId: "mock-yardi",
+        to: a.mode,
+        note: "Applies to the next outbound effect only.",
+      });
       return;
     }
   }
@@ -761,7 +1142,8 @@ export function seedState(now: number): DemoState {
 export type SlaRisk = "N/A" | "OK" | "AT_RISK" | "BREACHED" | "MET";
 export function slaRisk(c: Case, now: number): SlaRisk {
   if (!c.slaDueAt || !c.slaHours) return "N/A";
-  if (["VERIFIED", "SETTLEMENT_READY", "CLOSED"].includes(c.status)) return "MET";
+  if (["VERIFIED", "SETTLEMENT_READY", "CLOSED"].includes(c.status))
+    return "MET";
   const left = c.slaDueAt - now;
   if (left <= 0) return "BREACHED";
   if (left < c.slaHours * 3600_000 * 0.25) return "AT_RISK";
@@ -770,15 +1152,24 @@ export function slaRisk(c: Case, now: number): SlaRisk {
 
 export function metrics(s: DemoState, now: number) {
   const cases = Object.values(s.cases);
-  const open = cases.filter((c) => c.status !== "DRAFT" && c.status !== "CLOSED");
+  const open = cases.filter(
+    (c) => c.status !== "DRAFT" && c.status !== "CLOSED",
+  );
   return {
     open: open.length,
-    slaRisk: open.filter((c) => ["AT_RISK", "BREACHED"].includes(slaRisk(c, now))).length,
+    slaRisk: open.filter((c) =>
+      ["AT_RISK", "BREACHED"].includes(slaRisk(c, now)),
+    ).length,
     awaitingVerification: cases.filter((c) => {
       const wo = c.currentWoId ? s.workOrders[c.currentWoId] : undefined;
-      return wo && (wo.status === "WORK_REPORTED_COMPLETE" || wo.status === "EVIDENCE_REVIEW");
+      return (
+        wo &&
+        (wo.status === "WORK_REPORTED_COMPLETE" ||
+          wo.status === "EVIDENCE_REVIEW")
+      );
     }).length,
-    settlementReady: cases.filter((c) => c.status === "SETTLEMENT_READY").length,
+    settlementReady: cases.filter((c) => c.status === "SETTLEMENT_READY")
+      .length,
   };
 }
 

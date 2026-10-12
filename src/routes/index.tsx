@@ -1,5 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ClipboardList, ShieldCheck, User, Wrench, ChevronRight } from "lucide-react";
+import {
+  ClipboardList,
+  ShieldCheck,
+  User,
+  Wrench,
+  ChevronRight,
+} from "lucide-react";
 import { useDemo } from "@/domain/store";
 import { MAIN_CASE_ID, metrics, stageOf } from "@/domain/model";
 import { Card, Chip, PageTitle } from "@/components/wg/ui";
@@ -8,19 +14,47 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Whitney Grove Maintenance MVP — Governed demo" },
-      { name: "description", content: "One governed multifamily maintenance transaction, end to end, with synthetic data." },
+      {
+        name: "description",
+        content:
+          "One governed multifamily maintenance transaction, end to end, with synthetic data.",
+      },
       { property: "og:title", content: "Whitney Grove Maintenance MVP" },
-      { property: "og:description", content: "Resident, manager, technician and audit roles for one governed work order." },
+      {
+        property: "og:description",
+        content:
+          "Resident, manager, technician and audit roles for one governed work order.",
+      },
     ],
   }),
   component: Index,
 });
 
 const ROLES = [
-  { to: "/resident", label: "Resident", desc: "Report the leak, confirm the AI summary, accept or dispute the result", icon: User },
-  { to: "/manager", label: "Manager / Dispatcher", desc: "Triage, authorize, assign, verify or require rework", icon: ClipboardList },
-  { to: "/worker", label: "Maintenance Worker", desc: "Task Pack, accept, start, before/after evidence, report complete", icon: Wrench },
-  { to: "/audit", label: "Operations / Audit", desc: "Event chain, settlement readiness, PMS reconciliation, receipt", icon: ShieldCheck },
+  {
+    to: "/resident",
+    label: "Resident",
+    desc: "Report the leak, confirm the AI summary, accept or dispute the result",
+    icon: User,
+  },
+  {
+    to: "/manager",
+    label: "Manager / Dispatcher",
+    desc: "Triage, authorize, assign, verify or require rework",
+    icon: ClipboardList,
+  },
+  {
+    to: "/worker",
+    label: "Maintenance Worker",
+    desc: "Task Pack, accept, start, before/after evidence, report complete",
+    icon: Wrench,
+  },
+  {
+    to: "/audit",
+    label: "Operations / Audit",
+    desc: "Event chain, settlement readiness, PMS reconciliation, receipt",
+    icon: ShieldCheck,
+  },
 ] as const;
 
 const SCRIPT = [
@@ -39,8 +73,12 @@ function Index() {
   const m = metrics(state, now);
   return (
     <div className="space-y-4">
-      <PageTitle eyebrow="Governed maintenance demo" title="Whitney Grove Maintenance MVP">
-        One routine plumbing case taken from report to settlement-ready. All people and data are synthetic.
+      <PageTitle
+        eyebrow="Governed maintenance demo"
+        title="Whitney Grove Maintenance MVP"
+      >
+        One routine plumbing case taken from report to settlement-ready. All
+        people and data are synthetic.
       </PageTitle>
       <Card title="Seeded scenario" aside={<Chip value={stageOf(state, c)} />}>
         <p className="font-mono text-xs text-muted-foreground">{c.id}</p>
@@ -62,7 +100,11 @@ function Index() {
       </Card>
       <div className="space-y-2">
         {ROLES.map(({ to, label, desc, icon: Icon }) => (
-          <Link key={to} to={to} className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 shadow-sm hover:border-primary/40">
+          <Link
+            key={to}
+            to={to}
+            className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 shadow-sm hover:border-primary/40"
+          >
             <Icon className="h-5 w-5 text-primary" />
             <div className="flex-1">
               <p className="font-semibold">{label}</p>
