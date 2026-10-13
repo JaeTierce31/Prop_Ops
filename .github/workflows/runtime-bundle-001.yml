@@ -1,0 +1,57 @@
+name: PROP-OPS Runtime Bundle 001
+
+on:
+  push:
+    branches:
+      - prop-ops-staging-auth-e2e-001
+    paths:
+      - 'runtime/**'
+      - 'src/server/**'
+      - 'src/domain/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/runtime-bundle-001.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install frozen dependency graph
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+
+      - name: Bundle real Property Ops API handler for Neon Functions
+        shell: bash
+        run: |
+          mkdir -p dist
+          npx esbuild runtime/property-ops-function.ts \
+            --bundle \
+            --platform=node \
+            --target=node24 \
+            --format=esm \
+            --banner:js="import{createRequire as ___cr}from'module';import{fileURLToPath as ___f}from'url';import{dirname as ___d}from'path';const require=___cr(import.meta.url);const __filename=___f(import.meta.url);const __dirname=___d(__filename);" \
+            --outfile=dist/index.mjs
+          (cd dist && zip -q function.zip index.mjs)
+          sha256sum dist/function.zip | tee dist/function.sha256
+
+      - name: Upload immutable runtime bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: propops-runtime-${{ github.sha }}
+          path: |
+            dist/function.zip
+            dist/function.sha256
+          if-no-files-found: error
+          retention-days: 7
