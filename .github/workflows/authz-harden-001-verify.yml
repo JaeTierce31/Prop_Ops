@@ -1,0 +1,47 @@
+name: AUTHZ-HARDEN-001 Verification
+
+on:
+  push:
+    branches:
+      - prop-ops-authz-harden-001
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: prop-ops-authz-harden-001
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Clean
+        run: rm -rf node_modules dist .output .vinxi
+
+      - name: Install frozen dependency graph
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+
+      - name: Verify formatting
+        run: npx prettier --check "src/**/*.{ts,tsx,css}" eslint.config.js vite.config.ts vitest.config.ts tsconfig.json package.json
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
