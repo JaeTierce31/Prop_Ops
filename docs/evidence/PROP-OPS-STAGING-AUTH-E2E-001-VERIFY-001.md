@@ -18,55 +18,71 @@ No partial result promotes PR #2 or PR #1.
 
 | Gate | State | Evidence |
 |---|---|---|
-| AUTH-E2E-01 | **PARTIAL** | Staging branch has Managed Better Auth (`better_auth`) with email/password enabled and branch-specific JWKS URL. Four synthetic staging identities were created through Neon Auth administration. A valid end-user session/access-token issuance path has not yet been exercised, so no token is accepted as evidence yet. |
-| AUTH-E2E-02 | **PARTIAL** | Server code verifies bearer JWTs with JWKS and derives `authSubject = payload.sub`; role/property/unit scope is then resolved from `prop_ops.resolve_identity_v2(...)` and written to transaction-local DB context. Client-supplied roles are not an authority source in the inspected implementation. Live forged-header/body/claim tests remain pending because signed staging tokens are not yet available to the test runner. |
+| AUTH-E2E-01 | **PARTIAL — token issuance proven** | A dedicated staging Neon Function executed Managed Better Auth email signup/sign-in, maintained the HTTP-only session cookie, called the JWT `/token` endpoint, and obtained raw JWTs for Resident, Manager, Worker, and Ops. All four JWTs contained the expected `sub`, issuer, and audience values. Raw token material is intentionally excluded from this receipt. Cryptographic verification through the Property Ops API/JWKS verifier remains required before this gate becomes PASS. |
+| AUTH-E2E-02 | **PARTIAL** | The four live JWT subjects were bound to existing canonical Property Ops domain actors. `prop_ops.resolve_identity_v2(...)` returned exactly DB-derived scope: Resident → `resident`, Whitney Grove property, unit 3B; Manager → `manager`, Whitney Grove property; Worker → `worker`, Whitney Grove property; Ops → `ops`, organization-wide. Live forged-header/body/org-substitution and altered-JWT-signature execution against the deployed Property Ops API remains pending. |
 | CONC-01 | **PARTIAL** | Audit uniqueness constraints and per-org advisory-lock design were previously verified structurally. True two-independent-connection contention has not yet been executed in this gate. |
-| PLUMB-01 | **PARTIAL** | Staging branch inherited seeded canonical data: 2 cases, 1 work order, 1 outbox row. No authenticated end-to-end resident→manager→worker→verification→resident-confirmation API execution has yet been completed. |
-| OBS-01 | **PARTIAL** | Neon branch log query path is available; current pg-endpoint query returned no events in the sampled window. Application-request correlation and reconstructable trace evidence remain pending. |
-| RECOVERY-01 | **BLOCKED/PARTIAL** | Attempting a Neon snapshot on the non-root staging branch returned `not allowed to snapshot non-root branch`. No substitution is accepted as PASS. A branch/PITR recovery procedure must be selected and executed with equivalent evidence or the staging topology must be adjusted so the required snapshot drill is supported. |
-| ROLLBACK-01 | **PENDING** | No N+1 staging deploy and rollback-to-N execution receipt exists yet. |
+| PLUMB-01 | **PARTIAL** | Staging contains seeded canonical data and the four real Auth subjects are now bound to canonical actors. No authenticated resident→manager→worker→verification→resident-confirmation run through `/api/property-ops/*` has yet completed. |
+| OBS-01 | **PARTIAL** | Neon Functions provide a working public runtime surface and the auth probes are reconstructable by version/suffix. End-to-end application request correlation through API → DB → audit/outbox is still pending. |
+| RECOVERY-01 | **BLOCKED/PARTIAL** | Direct snapshot on the non-root staging branch remains unsupported (`not allowed to snapshot non-root branch`). No substitution is accepted as PASS. A supported PITR/snapshot topology and before/mutation/restore invariant proof remain required. |
+| ROLLBACK-01 | **PENDING** | No canonical Property Ops N+1 staging deploy and rollback-to-N receipt exists yet. |
+
+## Runtime authentication evidence
+
+### Network/auth probe progression
+
+1. Initial live runtime probe reached Managed Better Auth but signup/sign-in failed with `MISSING_ORIGIN` / `MISSING_OR_NULL_ORIGIN`.
+2. A fresh function implementation supplied `Origin: http://localhost:3000` and absolute `callbackURL` values; signup/sign-in then succeeded.
+3. Managed Better Auth returned an opaque session token/cookie as expected for browser sessions; this was not misclassified as a JWT.
+4. Following the Managed Better Auth JWT-plugin flow, a second probe retained the session cookie and called `/token`.
+5. `/token` returned JWTs for all four roles. The probe decoded only non-secret claims and did not emit raw JWTs.
+
+### Live JWT subjects
+
+| Role | Auth subject (`sub`) | DB domain actor | DB authority result |
+|---|---|---|---|
+| Resident | `04b144b8-d354-4059-97e5-5dcc5f08b346` | `res-3b` | role `resident`; property `41cb96e8-53c3-482c-be54-e8f5355c2c98`; unit `b1471629-2c16-4eab-a6e9-babe8473f99c` |
+| Manager | `11aa5abb-5c8a-417a-b764-eb80ab3bdefa` | `mgr-01` | role `manager`; property `41cb96e8-53c3-482c-be54-e8f5355c2c98`; no unit scope |
+| Worker | `11b66f40-fefd-4b66-bf86-406f83ac760a` | `wkr-01` | role `worker`; property `41cb96e8-53c3-482c-be54-e8f5355c2c98`; no unit scope |
+| Ops | `1185c848-aff3-4e39-9b4b-b28ad87aa7d3` | `ops-01` | role `ops`; organization-wide; no property/unit restriction |
+
+All four resolve under organization `4a918942-cd4c-4a36-9b06-42a679d7fcd3` (Whitney Grove Demo).
 
 ## Auth implementation evidence
 
-`src/server/data-auth.ts` currently performs:
+`src/server/data-auth.ts` performs:
 
 1. `Authorization: Bearer <token>` extraction;
-2. JWKS signature verification using `AUTH_JWKS_URL`;
-3. issuer verification using `AUTH_ISSUER` and optional audience verification;
+2. JWKS signature verification;
+3. issuer verification and optional audience verification;
 4. `payload.sub` extraction as the authentication subject;
 5. optional organization selection from `x-prop-ops-org`;
 6. membership resolution via `prop_ops.resolve_identity_v2(auth_subject, org_id)`;
 7. fail-closed handling for no membership, ambiguous organization, and unbound domain actor;
-8. transaction-local propagation of database-derived `user_id`, `org_id`, `roles`, `property_ids`, and `unit_ids`.
+8. transaction-local propagation of DB-derived `user_id`, `org_id`, `roles`, `property_ids`, and `unit_ids`.
 
-Therefore token claims or request body fields do not directly become Property Ops role/property/unit authority in the inspected code path. This remains a design/code fact until live signed-token adversarial execution confirms it.
+The live subject-binding result now demonstrates that the JWT identity and Property Ops authority model can converge without taking role/property/unit authority from JWT custom claims or request-body fields. The negative/spoof execution still must be run against the live API before AUTH-E2E-02 is PASS.
 
-## Managed Better Auth staging state
+## Managed Better Auth JWT semantics
 
-The isolated Neon branch reports:
-
-- provider: `better_auth`
-- email/password: enabled
-- signup: enabled
-- email verification required: no
-- branch-specific JWKS endpoint: provisioned
-
-Neon documentation confirms that successful email sign-in returns `session.access_token`, a signed JWT whose `sub` is the Neon Auth user ID. That is the token required by AUTH-E2E-01.
-
-## Token issuance blocker
-
-The currently available Neon administration connector can create Auth users but does not expose an end-user password/session/sign-in operation. The execution runtime used for this verification also could not resolve the external Neon Auth hostname, so a real `/auth/sign-in/email` session could not be established from the runner.
-
-This blocker must not be bypassed with fabricated JWTs. The next valid token evidence must come from an actual Managed Better Auth sign-in/signup session or a staging runner with network access to the branch Auth endpoint.
+Managed Better Auth uses the session cookie for normal browser authentication and exposes raw JWTs through the JWT plugin `/token` flow. The emitted JWTs use the Neon Auth user ID as `sub`; the observed issuer and audience both matched the staging Neon Auth origin. Access tokens are short lived. This receipt stores subject identifiers and test results only, not credentials or token material.
 
 ## Recovery finding
 
-Snapshot creation was attempted directly against the staging branch and rejected by Neon because snapshots are not allowed on a non-root branch in the current project topology. `RECOVERY-01` therefore remains open. Acceptable remediation paths are:
+Snapshot creation on this non-root staging branch is unsupported in the current topology. `RECOVERY-01` remains open. Acceptable remediation remains:
 
-1. execute point-in-time/branch recovery on a topology Neon supports and preserve the exact before/mutation/after receipts; or
-2. re-establish staging on a snapshot-capable root/eligible branch without weakening isolation.
+1. execute point-in-time/snapshot recovery on an eligible isolated topology and preserve exact before/mutation/after receipts; or
+2. re-establish the recovery drill on a snapshot-capable root/eligible branch without weakening staging isolation.
 
-A copy-on-write branch alone is not silently promoted to a snapshot PASS unless the gate contract is formally amended.
+A copy-on-write branch by itself is not promoted to snapshot PASS.
+
+## Remaining hard blockers
+
+1. Cryptographic live JWT acceptance/rejection through the Property Ops verifier, including tampered signature and forged authority inputs.
+2. Two genuinely independent database connections contending on the same organization with monotonic/non-forking audit proof.
+3. Full authenticated plumbing closed loop through `/api/property-ops/*`.
+4. Correlated observability across request → authority resolution → mutation → audit/outbox.
+5. Supported recovery drill with invariant verification.
+6. Canonical application deploy N+1 → rollback N with canonical database-state proof.
 
 ## Merge posture
 
