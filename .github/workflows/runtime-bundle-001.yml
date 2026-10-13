@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   bundle:
@@ -45,6 +45,21 @@ jobs:
             --outfile=dist/index.mjs
           (cd dist && zip -q function.zip index.mjs)
           sha256sum dist/function.zip | tee dist/function.sha256
+          sha256sum dist/index.mjs | tee dist/index.sha256
+
+      - name: Publish immutable bundled source for staging loader
+        shell: bash
+        run: |
+          mkdir -p artifacts/runtime
+          cp dist/index.mjs artifacts/runtime/index.mjs
+          cp dist/index.sha256 artifacts/runtime/index.sha256
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/runtime/index.mjs artifacts/runtime/index.sha256
+          if ! git diff --cached --quiet; then
+            git commit -m "build(runtime): freeze bundled Property Ops handler [skip ci]"
+            git push origin HEAD:prop-ops-staging-auth-e2e-001
+          fi
 
       - name: Upload immutable runtime bundle
         uses: actions/upload-artifact@v4
@@ -53,5 +68,7 @@ jobs:
           path: |
             dist/function.zip
             dist/function.sha256
+            dist/index.mjs
+            dist/index.sha256
           if-no-files-found: error
           retention-days: 7
