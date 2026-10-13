@@ -234,13 +234,15 @@ async function enqueueCommittedAction(
 ): Promise<void> {
   const dedupeKey = `${MAIN_CASE_ID}:${aggregateVersion}:${action.type}`;
   await client.query(
-    `INSERT INTO prop_ops.outbox (
-       org_id, aggregate_type, aggregate_id, event_type, payload, dedupe_key
+    `SELECT prop_ops.enqueue_domain_outbox(
+       $1::uuid,
+       c.id,
+       'DOMAIN_ACTION_COMMITTED',
+       $2::jsonb,
+       $3
      )
-     SELECT $1, 'CASE', c.id, 'DOMAIN_ACTION_COMMITTED', $2::jsonb, $3
        FROM prop_ops.cases c
-      WHERE c.public_id = $4
-     ON CONFLICT (org_id, dedupe_key) DO NOTHING`,
+      WHERE c.public_id = $4`,
     [
       identity.orgId,
       JSON.stringify({ action, aggregateVersion }),
