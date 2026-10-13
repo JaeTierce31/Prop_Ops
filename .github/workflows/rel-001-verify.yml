@@ -1,0 +1,47 @@
+name: REL-001 Verification
+
+on:
+  push:
+    branches:
+      - rel-001-source-convergence
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: rel-001-source-convergence
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Clean
+        run: rm -rf node_modules dist .output .vinxi
+      - name: Install
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Normalize formatting
+        run: npx prettier --write "src/**/*.{ts,tsx,css}" eslint.config.js vite.config.ts vitest.config.ts tsconfig.json package.json
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Commit formatting normalization
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src eslint.config.js vite.config.ts vitest.config.ts tsconfig.json package.json
+            git commit -m "style: normalize converged source"
+            git push origin HEAD:rel-001-source-convergence
+          fi

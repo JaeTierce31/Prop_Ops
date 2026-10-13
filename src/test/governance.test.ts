@@ -1,0 +1,213 @@
+import { describe, expect, it } from "vitest";
+import {
+  ACTORS,
+  MAIN_CASE_ID as C,
+  SEEDED_REPORT_TEXT,
+  dispatch,
+  seedState,
+  verifyChain,
+  type Action,
+  type Actor,
+  type DemoState,
+} from "@/domain/model";
+let t = 1_000_000;
+function step(s: DemoState, a: Action, actor: Actor, expectOk = true) {
+  const r = dispatch(s, a, actor, ++t);
+  if (expectOk && !r.ok) throw new Error(`${a.type}: ${r.reason}`);
+  if (!expectOk) expect(r.ok).toBe(false);
+  return r.state;
+}
+const M = ACTORS.manager,
+  W = ACTORS.worker1,
+  R = ACTORS.resident;
+function toReview(s: DemoState, wo: string) {
+  if (s.workOrders[wo]!.status === "ASSIGNED")
+    s = step(s, { type: "ACCEPT", woId: wo }, W);
+  s = step(s, { type: "START", woId: wo }, W);
+  s = step(
+    s,
+    { type: "ADD_EVIDENCE", woId: wo, kind: "BEFORE", caption: "before" },
+    W,
+  );
+  s = step(
+    s,
+    { type: "ADD_EVIDENCE", woId: wo, kind: "AFTER", caption: "after" },
+    W,
+  );
+  s = step(s, { type: "REPORT_COMPLETE", woId: wo }, W);
+  return step(s, { type: "BEGIN_REVIEW", woId: wo }, M);
+}
+function toAuthorized() {
+  let s = seedState(t);
+  s = step(
+    s,
+    {
+      type: "SUBMIT_REPORT",
+      caseId: C,
+      text: SEEDED_REPORT_TEXT,
+      photoCaption: "p",
+    },
+    R,
+  );
+  s = step(s, { type: "AI_NORMALIZE", caseId: C }, ACTORS.ai);
+  s = step(s, { type: "CONFIRM_SUMMARY", caseId: C }, R);
+  s = step(
+    s,
+    { type: "TRIAGE", caseId: C, severity: "PRIORITY", slaHours: 24 },
+    M,
+  );
+  return step(
+    s,
+    { type: "AUTHORIZE_WORK", caseId: C, scope: "Repair under-sink leak" },
+    M,
+  );
+}
+const WO1 = "WG-WO-1042-R1";
+describe("governance invariants", () => {
+  it("AI cannot authorize, verify, settle or close", () => {
+    let s = seedState(t);
+    for (const a of [
+      { type: "AUTHORIZE_WORK", caseId: C, scope: "xxxxxxxxxxxx" },
+      { type: "VERIFY", woId: WO1 },
+      { type: "MARK_SETTLEMENT_READY", caseId: C },
+      { type: "CLOSE", caseId: C },
+    ] as Action[])
+      s = step(s, a, ACTORS.ai, false);
+    expect(s.events.filter((e) => e.outcome === "DENIED")).toHaveLength(4);
+  });
+  it("triage requires resident confirmation of the summary", () => {
+    let s = seedState(t);
+    s = step(
+      s,
+      { type: "SUBMIT_REPORT", caseId: C, text: SEEDED_REPORT_TEXT },
+      R,
+    );
+    s = step(s, { type: "AI_NORMALIZE", caseId: C }, ACTORS.ai);
+    step(
+      s,
+      { type: "TRIAGE", caseId: C, severity: "PRIORITY", slaHours: 24 },
+      M,
+      false,
+    );
+  });
+  it("Case and WorkOrder are distinct, and assignment needs authorization", () => {
+    let s = seedState(t);
+    expect(Object.keys(s.workOrders)).not.toContain(WO1);
+    s = toAuthorized();
+    expect(s.cases[C]!.status).toBe("AUTHORIZED");
+    expect(s.workOrders[WO1]!.caseId).toBe(C);
+  });
+  it("worker cannot self-verify; complete is not verified; verified is not closed", () => {
+    let s = toAuthorized();
+    s = step(s, { type: "ASSIGN", woId: WO1, workerId: W.id }, M);
+    s = toReview(s, WO1);
+    expect(s.workOrders[WO1]!.status).toBe("EVIDENCE_REVIEW");
+    expect(s.cases[C]!.status).toBe("IN_WORK");
+    s = step(s, { type: "VERIFY", woId: WO1 }, W, false);
+    s = step(s, { type: "VERIFY", woId: WO1 }, M);
+    expect(s.cases[C]!.status).toBe("VERIFIED");
+    step(s, { type: "CLOSE", caseId: C }, M, false);
+  });
+  it("only the assigned technician can act", () => {
+    let s = toAuthorized();
+    s = step(s, { type: "ASSIGN", woId: WO1, workerId: W.id }, M);
+    step(s, { type: "ACCEPT", woId: WO1 }, ACTORS.worker2, false);
+  });
+  it("settlement-ready requires verification and resident confirmation", () => {
+    let s = toAuthorized();
+    s = step(s, { type: "MARK_SETTLEMENT_READY", caseId: C }, M, false);
+    s = step(s, { type: "ASSIGN", woId: WO1, workerId: W.id }, M);
+    s = toReview(s, WO1);
+    s = step(s, { type: "VERIFY", woId: WO1 }, M);
+    s = step(s, { type: "MARK_SETTLEMENT_READY", caseId: C }, M, false);
+    s = step(s, { type: "CONFIRM_OUTCOME", caseId: C }, R);
+    s = step(s, { type: "MARK_SETTLEMENT_READY", caseId: C }, M);
+    s = step(s, { type: "GENERATE_RECEIPT", caseId: C }, M);
+    expect(s.cases[C]!.status).toBe("SETTLEMENT_READY");
+    expect(s.cases[C]!.receiptId).toMatch(/^RCPT-/);
+    expect(verifyChain(s.events)).toBe(true);
+  });
+  it("evidence corrections supersede and never replace", () => {
+    let s = toAuthorized();
+    s = step(s, { type: "ASSIGN", woId: WO1, workerId: W.id }, M);
+    s = step(s, { type: "ACCEPT", woId: WO1 }, W);
+    s = step(s, { type: "START", woId: WO1 }, W);
+    s = step(
+      s,
+      { type: "ADD_EVIDENCE", woId: WO1, kind: "BEFORE", caption: "blurry" },
+      W,
+    );
+    const first = s.evidence.at(-1)!.id;
+    s = step(
+      s,
+      {
+        type: "ADD_EVIDENCE",
+        woId: WO1,
+        kind: "BEFORE",
+        caption: "retake",
+        supersedes: first,
+      },
+      W,
+    );
+    expect(s.evidence.find((e) => e.id === first)!.caption).toBe("blurry");
+    step(
+      s,
+      {
+        type: "ADD_EVIDENCE",
+        woId: WO1,
+        kind: "BEFORE",
+        caption: "again",
+        supersedes: first,
+      },
+      W,
+      false,
+    );
+  });
+  it("rework then dispute paths reach settlement-ready", () => {
+    let s = toAuthorized();
+    s = step(s, { type: "ASSIGN", woId: WO1, workerId: W.id }, M);
+    s = toReview(s, WO1);
+    s = step(s, { type: "REQUIRE_REWORK", woId: WO1, reason: "redo trap" }, M);
+    expect(s.workOrders[WO1]!.status).toBe("REWORK_REQUIRED");
+    s = step(s, { type: "ACCEPT", woId: WO1 }, W, false);
+    s = toReview(s, "WG-WO-1042-R2");
+    s = step(s, { type: "VERIFY", woId: "WG-WO-1042-R2" }, M);
+    s = step(s, { type: "DISPUTE", caseId: C, reason: "still drips" }, R);
+    expect(s.cases[C]!.status).toBe("DISPUTED");
+    s = step(
+      s,
+      { type: "AUTHORIZE_WORK", caseId: C, scope: "Follow-up on dispute" },
+      M,
+    );
+    s = step(s, { type: "ASSIGN", woId: "WG-WO-1042-R3", workerId: W.id }, M);
+    s = toReview(s, "WG-WO-1042-R3");
+    s = step(s, { type: "VERIFY", woId: "WG-WO-1042-R3" }, M);
+    s = step(s, { type: "CONFIRM_OUTCOME", caseId: C }, R);
+    s = step(s, { type: "MARK_SETTLEMENT_READY", caseId: C }, M);
+    expect(s.cases[C]!.status).toBe("SETTLEMENT_READY");
+  });
+  it("PMS effects are idempotent and ambiguous outcomes block blind retry", () => {
+    let s = toAuthorized();
+    const fx = s.effects[0]!;
+    s = step(s, { type: "REPLAY_EFFECT", effectId: fx.id }, ACTORS.ops);
+    expect(s.effects).toHaveLength(1);
+    expect(s.events.at(-1)!.outcome).toBe("DEDUPED");
+    s = step(
+      s,
+      { type: "SET_PMS_MODE", mode: "TIMEOUT_AFTER_WRITE" },
+      ACTORS.ops,
+    );
+    s = step(s, { type: "ASSIGN", woId: WO1, workerId: W.id }, M);
+    s = toReview(s, WO1);
+    s = step(s, { type: "VERIFY", woId: WO1 }, M);
+    const amb = s.effects.at(-1)!;
+    expect(amb.status).toBe("UNKNOWN");
+    s = step(s, { type: "RETRY_EFFECT", effectId: amb.id }, ACTORS.ops, false);
+    s = step(s, { type: "CONFIRM_OUTCOME", caseId: C }, R);
+    s = step(s, { type: "MARK_SETTLEMENT_READY", caseId: C }, M, false);
+    s = step(s, { type: "RECONCILE_EFFECT", effectId: amb.id }, ACTORS.ops);
+    expect(s.effects.at(-1)!.status).toBe("CONFIRMED");
+    expect(s.effects.at(-1)!.attempts).toBe(1);
+    step(s, { type: "MARK_SETTLEMENT_READY", caseId: C }, M);
+  });
+});

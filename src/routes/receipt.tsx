@@ -1,0 +1,158 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useDemo } from "@/domain/store";
+import { MAIN_CASE_ID, currentEvidence, verifyChain } from "@/domain/model";
+import { Btn, Card, Chip, PageTitle, fmtDateTime } from "@/components/wg/ui";
+
+export const Route = createFileRoute("/receipt")({
+  head: () => ({
+    meta: [
+      { title: "Completion receipt — Whitney Grove" },
+      {
+        name: "description",
+        content:
+          "Verified completion receipt anchored to the audit event chain.",
+      },
+      {
+        property: "og:title",
+        content: "Completion Receipt · Whitney Grove Maintenance",
+      },
+      {
+        property: "og:description",
+        content:
+          "Who authorized, performed and verified the work, plus PMS references.",
+      },
+    ],
+  }),
+  component: ReceiptPage,
+});
+
+function ReceiptPage() {
+  const { state } = useDemo();
+  const c = state.cases[MAIN_CASE_ID]!;
+  if (!c.receiptId) {
+    return (
+      <div className="space-y-4">
+        <PageTitle eyebrow="Completion receipt" title="No receipt yet" />
+        <Card>
+          <p className="text-sm">
+            A receipt can only be generated once the case is SETTLEMENT_READY.
+            Current status: <Chip value={c.status} />
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Link
+              to="/manager"
+              className="flex min-h-11 items-center justify-center rounded-md bg-primary text-sm font-medium text-primary-foreground"
+            >
+              Go to Manager
+            </Link>
+            <Link
+              to="/audit"
+              className="flex min-h-11 items-center justify-center rounded-md border border-border text-sm font-medium"
+            >
+              Go to Audit
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+  const wos = c.woIds.map((id) => state.workOrders[id]!);
+  const wo = state.workOrders[c.currentWoId!]!;
+  const ev = currentEvidence(state, wo.id);
+  const head = state.events.at(-1)!;
+  const effects = state.effects.filter((e) => e.caseId === c.id);
+  return (
+    <div className="space-y-4">
+      <PageTitle eyebrow="Completion receipt" title={c.receiptId}>
+        Synthetic demo record. No payment was executed.
+      </PageTitle>
+      <Card title="Summary" aside={<Chip value={c.status} />}>
+        <dl className="grid grid-cols-[120px_1fr] gap-1.5 text-sm">
+          <dt className="text-muted-foreground">Case</dt>
+          <dd className="font-mono text-xs">{c.id}</dd>
+          <dt className="text-muted-foreground">Unit</dt>
+          <dd>{c.unit}</dd>
+          <dt className="text-muted-foreground">Issue</dt>
+          <dd>
+            {c.summary?.category} · {c.summary?.location}
+          </dd>
+          <dt className="text-muted-foreground">Reported</dt>
+          <dd>{c.reportedAt ? fmtDateTime(c.reportedAt) : ""}</dd>
+          <dt className="text-muted-foreground">Severity / SLA</dt>
+          <dd>
+            {c.severity} · {c.slaHours}h
+          </dd>
+          <dt className="text-muted-foreground">Final WO</dt>
+          <dd className="font-mono text-xs">
+            {wo.id} (rev {wo.revision} of {wos.length})
+          </dd>
+          <dt className="text-muted-foreground">Authorized by</dt>
+          <dd>
+            {wo.authorizedBy} · {fmtDateTime(wo.authorizedAt)}
+          </dd>
+          <dt className="text-muted-foreground">Performed by</dt>
+          <dd>{wo.assigneeId}</dd>
+          <dt className="text-muted-foreground">Verified by</dt>
+          <dd>
+            {wo.verifiedBy}
+            {wo.verifiedAt ? ` · ${fmtDateTime(wo.verifiedAt)}` : ""}
+          </dd>
+          <dt className="text-muted-foreground">Resident</dt>
+          <dd>{c.residentOutcome}</dd>
+        </dl>
+      </Card>
+      <Card title="Verified evidence">
+        <ul className="space-y-1 font-mono text-xs">
+          {ev.map((e) => (
+            <li key={e.id}>
+              {e.id} · {e.kind} · #{e.hash}
+            </li>
+          ))}
+        </ul>
+      </Card>
+      <Card title="Work order history">
+        <ul className="space-y-1 text-sm">
+          {wos.map((w) => (
+            <li key={w.id} className="flex justify-between">
+              <span className="font-mono text-xs">{w.id}</span>
+              <Chip value={w.status} />
+            </li>
+          ))}
+        </ul>
+      </Card>
+      <Card title="PMS (mock Yardi) references">
+        <ul className="space-y-1 text-xs">
+          {effects.map((e) => (
+            <li key={e.id} className="flex justify-between gap-2">
+              <span>
+                {e.kind.replaceAll("_", " ")}{" "}
+                {e.externalRef && (
+                  <span className="font-mono">({e.externalRef})</span>
+                )}
+              </span>
+              <Chip value={e.status} />
+            </li>
+          ))}
+        </ul>
+      </Card>
+      <Card title="Integrity">
+        <p className="text-sm">
+          {state.events.length} events · chain{" "}
+          {verifyChain(state.events) ? "intact" : "BROKEN"} · head{" "}
+          <span className="font-mono text-xs">{head.hash}</span>
+        </p>
+      </Card>
+      <div className="no-print grid grid-cols-2 gap-2">
+        <Btn variant="secondary" onClick={() => window.print()}>
+          Print
+        </Btn>
+        <Link
+          to="/audit"
+          className="flex min-h-11 items-center justify-center rounded-md bg-primary text-sm font-medium text-primary-foreground"
+        >
+          Audit timeline
+        </Link>
+      </div>
+    </div>
+  );
+}
