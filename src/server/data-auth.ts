@@ -167,6 +167,14 @@ async function resolveIdentity(
   };
 }
 
+function sessionScope(identity: TenantIdentity): [string, string, string] {
+  return [
+    identity.roles.join(","),
+    identity.propertyIds.join(","),
+    identity.unitIds.join(","),
+  ];
+}
+
 export async function withTenantTransaction<T>(
   request: Request,
   rawEnv: unknown,
@@ -192,12 +200,16 @@ export async function withTenantTransaction<T>(
     await client.query("SET LOCAL ROLE prop_ops_app");
 
     const identity = await resolveIdentity(client, authSubject, explicitOrgId);
+    const [roles, propertyIds, unitIds] = sessionScope(identity);
 
     await client.query(
       `SELECT
          set_config('app.user_id', $1, true),
-         set_config('app.org_id', $2, true)`,
-      [identity.userId, identity.orgId],
+         set_config('app.org_id', $2, true),
+         set_config('app.roles', $3, true),
+         set_config('app.property_ids', $4, true),
+         set_config('app.unit_ids', $5, true)`,
+      [identity.userId, identity.orgId, roles, propertyIds, unitIds],
     );
 
     const result = await operation(client, identity, env);
