@@ -225,7 +225,9 @@ describe("CRM intake authenticated API boundary", () => {
       ),
     ).toBe(true);
     expect(
-      queries.some((query) => query.text.includes("INSERT INTO crm_intake_outbox")),
+      queries.some((query) =>
+        query.text.includes("INSERT INTO crm_intake_outbox"),
+      ),
     ).toBe(true);
   });
 
