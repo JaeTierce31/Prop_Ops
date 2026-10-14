@@ -29,7 +29,10 @@ describe("J3S intake submission state machine", () => {
     ["PROCESSING_FAILED", "RetryProcessing", "SUBMITTED"],
     ["PROCESSING_FAILED", "RejectSubmission", "REJECTED"],
   ] as const)("%s + %s -> %s", (from, event, expected) => {
-    expect(transitionSubmission(from, event)).toEqual({ ok: true, state: expected });
+    expect(transitionSubmission(from, event)).toEqual({
+      ok: true,
+      state: expected,
+    });
   });
 
   it("rejects an unspecified transition", () => {
@@ -39,27 +42,44 @@ describe("J3S intake submission state machine", () => {
     });
   });
 
-  it.each(["PROCESSED", "ABANDONED", "REJECTED", "EXPIRED", "CANCELLED"] as const)(
-    "%s is terminal and rejects further mutation",
-    (state) => {
-      expect(isTerminalSubmissionState(state)).toBe(true);
-      expect(transitionSubmission(state, "RecordAnswer")).toEqual({
-        ok: false,
-        code: "INVALID_STATE_TRANSITION",
-      });
-    },
-  );
+  it.each([
+    "PROCESSED",
+    "ABANDONED",
+    "REJECTED",
+    "EXPIRED",
+    "CANCELLED",
+  ] as const)("%s is terminal and rejects further mutation", (state) => {
+    expect(isTerminalSubmissionState(state)).toBe(true);
+    expect(transitionSubmission(state, "RecordAnswer")).toEqual({
+      ok: false,
+      code: "INVALID_STATE_TRANSITION",
+    });
+  });
 });
 
 describe("J3S intake required-field oracle", () => {
   it("accepts KNOWN and ASSERTED answers", () => {
-    expect(isRequiredFieldSatisfied({ required: true, epistemicState: "KNOWN" })).toBe(true);
-    expect(isRequiredFieldSatisfied({ required: true, epistemicState: "ASSERTED" })).toBe(true);
+    expect(
+      isRequiredFieldSatisfied({ required: true, epistemicState: "KNOWN" }),
+    ).toBe(true);
+    expect(
+      isRequiredFieldSatisfied({
+        required: true,
+        epistemicState: "ASSERTED",
+      }),
+    ).toBe(true);
   });
 
   it("rejects UNKNOWN, CONFLICTING, and unconfirmed critical INFERRED values", () => {
-    expect(isRequiredFieldSatisfied({ required: true, epistemicState: "UNKNOWN" })).toBe(false);
-    expect(isRequiredFieldSatisfied({ required: true, epistemicState: "CONFLICTING" })).toBe(false);
+    expect(
+      isRequiredFieldSatisfied({ required: true, epistemicState: "UNKNOWN" }),
+    ).toBe(false);
+    expect(
+      isRequiredFieldSatisfied({
+        required: true,
+        epistemicState: "CONFLICTING",
+      }),
+    ).toBe(false);
     expect(
       isRequiredFieldSatisfied({
         required: true,
