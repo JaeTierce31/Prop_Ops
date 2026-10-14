@@ -9,6 +9,10 @@ type FakeQuery = {
   values: unknown[];
 };
 
+type FakeClient = {
+  query: (text: string, values?: unknown[]) => Promise<QueryResult>;
+};
+
 const identity: TenantIdentity = {
   authSubject: "auth-subject-1",
   userId: "20000000-0000-0000-0000-000000000001",
@@ -27,12 +31,12 @@ function fakeTransaction(
     _request: Request,
     _env: unknown,
     operation: (
-      client: { query: (text: string, values?: unknown[]) => Promise<QueryResult> },
+      client: FakeClient,
       resolvedIdentity: TenantIdentity,
       env: Record<string, unknown>,
     ) => Promise<T>,
   ): Promise<T> => {
-    const client = {
+    const client: FakeClient = {
       async query(text: string, values: unknown[] = []) {
         queries.push({ text, values });
         return responder(text, values);
@@ -69,11 +73,7 @@ describe("CRM intake authenticated API boundary", () => {
       }
       if (text.includes("INSERT INTO crm_intake_sessions")) {
         return {
-          rows: [
-            {
-              id: "61000000-0000-0000-0000-000000000001",
-            },
-          ],
+          rows: [{ id: "61000000-0000-0000-0000-000000000001" }],
         };
       }
       return { rows: [] };
@@ -186,11 +186,7 @@ describe("CRM intake authenticated API boundary", () => {
       if (text.includes("FROM crm_intake_answers")) return { rows: [] };
       if (text.includes("INSERT INTO crm_intake_answers")) {
         return {
-          rows: [
-            {
-              id: "62000000-0000-0000-0000-000000000001",
-            },
-          ],
+          rows: [{ id: "62000000-0000-0000-0000-000000000001" }],
         };
       }
       if (text.includes("UPDATE crm_intake_submissions")) {
@@ -224,7 +220,9 @@ describe("CRM intake authenticated API boundary", () => {
     });
 
     expect(
-      queries.some((query) => query.text.includes("INSERT INTO crm_intake_provenance")),
+      queries.some((query) =>
+        query.text.includes("INSERT INTO crm_intake_provenance"),
+      ),
     ).toBe(true);
     expect(
       queries.some((query) => query.text.includes("INSERT INTO crm_intake_outbox")),
@@ -272,7 +270,9 @@ describe("CRM intake authenticated API boundary", () => {
       error: "STALE_REVISION",
     });
     expect(
-      queries.some((query) => query.text.includes("INSERT INTO crm_intake_answers")),
+      queries.some((query) =>
+        query.text.includes("INSERT INTO crm_intake_answers"),
+      ),
     ).toBe(false);
   });
 
