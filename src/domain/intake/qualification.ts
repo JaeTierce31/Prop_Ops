@@ -88,6 +88,10 @@ function assertScore(value: number, key: PropOpsDimensionKey): void {
   }
 }
 
+function normalizeScore(score: number): number {
+  return Math.round(score * 1_000_000_000) / 1_000_000_000;
+}
+
 export function qualifyPropOps(
   input: PropOpsQualificationInput,
 ): PropOpsQualificationResult {
@@ -105,7 +109,8 @@ export function qualifyPropOps(
     knownWeight += weight;
   }
 
-  const score = knownWeight === 0 ? 0 : weightedTotal / knownWeight;
+  const rawScore = knownWeight === 0 ? 0 : weightedTotal / knownWeight;
+  const score = normalizeScore(rawScore);
   const coverage = knownWeight;
   let state = band(score);
 
