@@ -105,10 +105,9 @@ describe("PROP-OPS-QUAL-001 v1", () => {
 
 describe("PROP-OPS-ROUTE-001 v1", () => {
   it("blocks missing evidence before lower-precedence rules", () => {
-    const qualification = qualifyPropOps({
-      dimensions: { ...strong, BUYER_ACCESS: undefined },
-    });
-    expect(routePropOps({ qualification, dimensions: { ...strong, BUYER_ACCESS: undefined } })).toMatchObject({
+    const dimensions = { ...strong, BUYER_ACCESS: undefined };
+    const qualification = qualifyPropOps({ dimensions });
+    expect(routePropOps({ qualification, dimensions })).toMatchObject({
       state: "BLOCKED_MISSING_EVIDENCE",
       ruleId: "R-001",
       commands: ["RequestEvidence", "CreateTask"],
