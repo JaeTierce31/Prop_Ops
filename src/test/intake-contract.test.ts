@@ -167,9 +167,10 @@ describe("contract-executable INT/ADV invariants", () => {
       "CANCELLED",
     ] as const) {
       expect(isTerminalSubmissionState(state)).toBe(true);
-      expect(() => transitionSubmission(state, "StartSubmission")).toThrow(
-        "INVALID_STATE_TRANSITION",
-      );
+      expect(transitionSubmission(state, "StartSubmission")).toEqual({
+        ok: false,
+        code: "INVALID_STATE_TRANSITION",
+      });
     }
   });
 
