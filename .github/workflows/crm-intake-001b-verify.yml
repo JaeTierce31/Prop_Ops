@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - 'db/migrations/008_crm_intake_001b.sql'
+      - 'db/tests/**'
       - 'src/domain/intake/**'
       - 'src/test/intake-*.test.ts'
       - 'src/test/fixtures/intake/**'
@@ -51,3 +52,40 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  database-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply migrations 001-008
+        run: |
+          for migration in db/migrations/*.sql; do
+            echo "Applying ${migration}"
+            psql -v ON_ERROR_STOP=1 -f "${migration}"
+          done
+
+      - name: Run intake runtime database contract
+        run: psql -v ON_ERROR_STOP=1 -f db/tests/crm_intake_001b_runtime.sql
