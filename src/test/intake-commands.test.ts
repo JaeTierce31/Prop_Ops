@@ -27,9 +27,9 @@ describe("intake proposed command envelopes", () => {
     expect(commands.every((command) => command.status === "PROPOSED")).toBe(
       true,
     );
-    expect(commands.some((command) => command.commandType === "CreateOpportunity")).toBe(
-      false,
-    );
+    expect(
+      commands.some((command) => command.commandType === "CreateOpportunity"),
+    ).toBe(false);
   });
 
   it("binds every proposal to tenant, submission, routing decision, policy, and deterministic idempotency", () => {
@@ -81,7 +81,9 @@ describe("intake proposed command envelopes", () => {
     const pilot = commands.find(
       (command) => command.commandType === "CreatePilotCandidate",
     );
-    const owner = commands.find((command) => command.commandType === "AssignOwner");
+    const owner = commands.find(
+      (command) => command.commandType === "AssignOwner",
+    );
 
     expect(opportunity?.requiresHumanApproval).toBe(true);
     expect(pilot?.requiresHumanApproval).toBe(true);
