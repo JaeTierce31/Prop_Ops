@@ -38,7 +38,9 @@ jobs:
         run: npm ci --legacy-peer-deps --no-audit --no-fund
 
       - name: Verify formatting
-        run: npx prettier --check "src/**/*.{ts,tsx,css}" eslint.config.js vite.config.ts vitest.config.ts tsconfig.json package.json
+        run: |
+          npx prettier --write "src/**/*.{ts,tsx,css}" eslint.config.js vite.config.ts vitest.config.ts tsconfig.json package.json
+          git diff --exit-code -- src eslint.config.js vite.config.ts vitest.config.ts tsconfig.json package.json
 
       - name: Typecheck
         run: npm run typecheck
