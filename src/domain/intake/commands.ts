@@ -1,7 +1,4 @@
-import type {
-  PropOpsCommandType,
-  PropOpsRoutingDecision,
-} from "./routing";
+import type { PropOpsCommandType, PropOpsRoutingDecision } from "./routing";
 import type { RoutingState } from "./types";
 
 export type ProposedCommandStatus = "PROPOSED";
