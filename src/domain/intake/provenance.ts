@@ -1,9 +1,5 @@
 export type ProvenanceSourceType =
-  | "RESPONDENT"
-  | "OPERATOR"
-  | "SYSTEM"
-  | "AI"
-  | "EXTERNAL";
+  "RESPONDENT" | "OPERATOR" | "SYSTEM" | "AI" | "EXTERNAL";
 
 export type ProvenanceTransformationType =
   | "ORIGINAL"
@@ -61,5 +57,8 @@ export function appendTransformation(
     }
   }
 
-  return [...existing, { ...record, parentProvenanceIds: [...record.parentProvenanceIds] }];
+  return [
+    ...existing,
+    { ...record, parentProvenanceIds: [...record.parentProvenanceIds] },
+  ];
 }
