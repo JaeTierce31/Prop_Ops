@@ -38,13 +38,15 @@ describe("J3S-CRM-INTAKE-001B 40-case fixture catalog", () => {
     expect(ADV_FIXTURES).toHaveLength(20);
 
     expect(INT_FIXTURES.map((fixture) => fixture.id)).toEqual(
-      Array.from({ length: 20 }, (_, index) =>
-        `INT-${String(index + 1).padStart(3, "0")}`,
+      Array.from(
+        { length: 20 },
+        (_, index) => `INT-${String(index + 1).padStart(3, "0")}`,
       ),
     );
     expect(ADV_FIXTURES.map((fixture) => fixture.id)).toEqual(
-      Array.from({ length: 20 }, (_, index) =>
-        `ADV-${String(index + 1).padStart(3, "0")}`,
+      Array.from(
+        { length: 20 },
+        (_, index) => `ADV-${String(index + 1).padStart(3, "0")}`,
       ),
     );
   });
@@ -74,8 +76,12 @@ describe("contract-executable INT/ADV invariants", () => {
   it("INT-003/015/016 and ADV-001/002/016 have tenant-scoped RLS primitives", () => {
     expect(migration).toContain("prop_ops.current_tenant_id()");
     expect(migration).toContain("prop_ops.crm_tenant_permitted(tenant_id)");
-    expect(migration).toContain("ALTER TABLE crm_intake_submissions ENABLE ROW LEVEL SECURITY");
-    expect(migration).toContain("ALTER TABLE crm_intake_evidence ENABLE ROW LEVEL SECURITY");
+    expect(migration).toContain(
+      "ALTER TABLE crm_intake_submissions ENABLE ROW LEVEL SECURITY",
+    );
+    expect(migration).toContain(
+      "ALTER TABLE crm_intake_evidence ENABLE ROW LEVEL SECURITY",
+    );
     expect(migration).toContain(
       "ALTER TABLE crm_intake_provisional_identities ENABLE ROW LEVEL SECURITY",
     );
@@ -142,9 +148,13 @@ describe("contract-executable INT/ADV invariants", () => {
   it("INT-008/017/018 and ADV-007/009/015/020 expose idempotency, revision, and outbox constraints", () => {
     expect(migration).toContain("revision bigint NOT NULL DEFAULT 0");
     expect(migration).toContain("UNIQUE (tenant_id, idempotency_key)");
-    expect(migration).toContain("UNIQUE (tenant_id, target_context, idempotency_key)");
+    expect(migration).toContain(
+      "UNIQUE (tenant_id, target_context, idempotency_key)",
+    );
     expect(migration).toContain("CREATE TABLE crm_intake_outbox");
-    expect(migration).toContain("Outbox insertion MUST occur in the same database transaction");
+    expect(migration).toContain(
+      "Outbox insertion MUST occur in the same database transaction",
+    );
   });
 
   it("ADV-008 rejects terminal-state transitions", () => {
