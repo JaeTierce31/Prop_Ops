@@ -1,8 +1,8 @@
-import type { RoutingState } from "./types";
 import type {
   PropOpsDimensionScores,
   PropOpsQualificationResult,
 } from "./qualification";
+import type { RoutingState } from "./types";
 
 export type PropOpsCommandType =
   | "RequestEvidence"
@@ -65,7 +65,10 @@ export function routePropOps(input: PropOpsRoutingInput): PropOpsRoutingDecision
     ]);
   }
 
-  if (qualification.state === "DISQUALIFIED" || (dimensions.ICP_FIT ?? 0) <= 25) {
+  if (
+    qualification.state === "DISQUALIFIED" ||
+    (dimensions.ICP_FIT ?? 0) <= 25
+  ) {
     return decision("NOT_CURRENT_FIT", "R-002", ["SendAcknowledgement"]);
   }
 
@@ -148,7 +151,10 @@ export function routePropOps(input: PropOpsRoutingInput): PropOpsRoutingDecision
     ]);
   }
 
-  if (qualification.state === "UNQUALIFIED" && (dimensions.ICP_FIT ?? 0) > 25) {
+  if (
+    qualification.state === "UNQUALIFIED" &&
+    (dimensions.ICP_FIT ?? 0) > 25
+  ) {
     return decision("NURTURE", "R-003", [
       "CreatePersonCandidate",
       "EnterNurtureSequence",
