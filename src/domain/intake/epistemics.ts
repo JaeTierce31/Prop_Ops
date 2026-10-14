@@ -76,13 +76,16 @@ export interface ResolvedAcceptedValue<TRaw, TValue> {
 export function resolveAcceptedValue<TRaw, TValue>(
   input: ResolveAcceptedValueInput<TRaw, TValue>,
 ): ResolvedAcceptedValue<TRaw, TValue> {
-  return {
+  const base: ResolvedAcceptedValue<TRaw, TValue> = {
     rawAnswer: input.rawAnswer,
     candidateValue: input.candidateValue,
-    acceptedValue: input.acceptance.accepted ? input.candidateValue : undefined,
     epistemicState:
       input.acceptance.accepted && input.acceptance.reason === "HUMAN_CONFIRMED"
         ? "KNOWN"
         : "INFERRED",
   };
+
+  return input.acceptance.accepted
+    ? { ...base, acceptedValue: input.candidateValue }
+    : base;
 }
