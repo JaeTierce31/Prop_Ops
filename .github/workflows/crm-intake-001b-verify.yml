@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - 'db/migrations/008_crm_intake_001b.sql'
+      - 'db/migrations/009_crm_intake_runtime_access.sql'
       - 'db/tests/**'
       - 'src/domain/intake/**'
       - 'src/test/intake-*.test.ts'
@@ -37,9 +38,7 @@ jobs:
         run: npm ci --legacy-peer-deps --no-audit --no-fund
 
       - name: Verify formatting
-        run: |
-          npx prettier --write "src/**/*.{ts,tsx,css}" eslint.config.js vite.config.ts vitest.config.ts tsconfig.json package.json
-          git diff --exit-code -- src eslint.config.js vite.config.ts vitest.config.ts tsconfig.json package.json
+        run: npx prettier --check "src/**/*.{ts,tsx,css}" eslint.config.js vite.config.ts vitest.config.ts tsconfig.json package.json
 
       - name: Typecheck
         run: npm run typecheck
@@ -80,7 +79,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Apply migrations 001-008
+      - name: Apply migrations 001-009
         run: |
           for migration in db/migrations/*.sql; do
             echo "Applying ${migration}"
@@ -89,3 +88,6 @@ jobs:
 
       - name: Run intake runtime database contract
         run: psql -v ON_ERROR_STOP=1 -f db/tests/crm_intake_001b_runtime.sql
+
+      - name: Run independent connection contention checks
+        run: bash db/tests/crm_intake_001b_contention.sh
