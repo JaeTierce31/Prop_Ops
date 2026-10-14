@@ -15,7 +15,10 @@ export const PROP_OPS_DIMENSION_KEYS = [
 ] as const;
 
 export type PropOpsDimensionKey = (typeof PROP_OPS_DIMENSION_KEYS)[number];
-export type PropOpsDimensionScores = Record<PropOpsDimensionKey, number | undefined>;
+export type PropOpsDimensionScores = Record<
+  PropOpsDimensionKey,
+  number | undefined
+>;
 
 export const PROP_OPS_QUAL_POLICY = {
   namespace: "PROP-OPS-QUAL-001",
