@@ -1,4 +1,3 @@
-import type { ClientBase } from "@neondatabase/serverless";
 import {
   ApiError,
   apiErrorResponse,
@@ -8,13 +7,13 @@ import {
   type TenantIdentity,
 } from "./data-auth";
 
-type IntakeQueryResult = {
+type QueryResult = {
   rows: Array<Record<string, unknown>>;
   rowCount?: number | null;
 };
 
 export interface IntakeDbClient {
-  query(text: string, values?: unknown[]): Promise<IntakeQueryResult>;
+  query(text: string, values?: unknown[]): Promise<QueryResult>;
 }
 
 export type IntakeTransactionRunner = <T>(
@@ -27,16 +26,12 @@ export type IntakeTransactionRunner = <T>(
   ) => Promise<T>,
 ) => Promise<T>;
 
-const productionTransactionRunner: IntakeTransactionRunner = (
-  request,
-  rawEnv,
-  operation,
-) =>
+const productionRunner: IntakeTransactionRunner = (request, rawEnv, operation) =>
   withTenantTransaction(request, rawEnv, (client, identity, env) =>
     operation(client as unknown as IntakeDbClient, identity, env),
   );
 
-const INTAKE_SOURCES = new Set([
+const intakeSources = new Set([
   "WEB",
   "MOBILE",
   "OPERATOR",
@@ -45,13 +40,13 @@ const INTAKE_SOURCES = new Set([
   "CONVERSATIONAL",
 ]);
 
-const RESPONDENT_EPISTEMIC_STATES = new Set([
+const respondentEpistemicStates = new Set([
   "ASSERTED",
   "UNKNOWN",
   "NOT_APPLICABLE",
 ]);
 
-function actorRef(identity: TenantIdentity): Record<string, string> {
+function actorRef(identity: TenantIdentity) {
   return {
     actorType: "HUMAN",
     actorId: identity.domainActorId,
@@ -63,27 +58,31 @@ function randomId(): string {
   return globalThis.crypto.randomUUID();
 }
 
-async function parseJsonObject(request: Request): Promise<Record<string, unknown>> {
-  let value: unknown;
+async function jsonBody(request: Request): Promise<Record<string, unknown>> {
+  let parsed: unknown;
   try {
-    value = await request.json();
+    parsed = await request.json();
   } catch {
     throw new ApiError(400, "INVALID_JSON", "A valid JSON body is required.");
   }
 
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new ApiError(400, "INVALID_INPUT", "The request body must be an object.");
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new ApiError(
+      400,
+      "INVALID_INPUT",
+      "The request body must be an object.",
+    );
   }
-  return value as Record<string, unknown>;
+  return parsed as Record<string, unknown>;
 }
 
-function requireString(
+function requiredString(
   body: Record<string, unknown>,
   key: string,
   maxLength = 200,
 ): string {
   const value = body[key];
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (typeof value !== "string" || !value.trim()) {
     throw new ApiError(400, "INVALID_INPUT", `${key} is required.`);
   }
   const normalized = value.trim();
@@ -100,45 +99,33 @@ function optionalString(
 ): string | null {
   const value = body[key];
   if (value === undefined || value === null || value === "") return null;
-  if (typeof value !== "string") {
-    throw new ApiError(400, "INVALID_INPUT", `${key} must be a string.`);
+  if (typeof value !== "string" || !value.trim()) {
+    throw new ApiError(400, "INVALID_INPUT", `${key} is invalid.`);
   }
   const normalized = value.trim();
-  if (!normalized || normalized.length > maxLength) {
-    throw new ApiError(400, "INVALID_INPUT", `${key} is invalid.`);
+  if (normalized.length > maxLength) {
+    throw new ApiError(400, "INVALID_INPUT", `${key} is too long.`);
   }
   return normalized;
 }
 
-function requireRevision(body: Record<string, unknown>): number {
+function expectedRevision(body: Record<string, unknown>): number {
   const value = body.expectedRevision;
-  if (!Number.isSafeInteger(value) || (value as number) < 0) {
+  if (!Number.isSafeInteger(value) || Number(value) < 0) {
     throw new ApiError(
       400,
       "INVALID_INPUT",
       "expectedRevision must be a non-negative integer.",
     );
   }
-  return value as number;
+  return Number(value);
 }
 
-function requireUuidPathValue(value: string, label: string): string {
-  if (
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      value,
-    )
-  ) {
+function pathUuid(value: string, label: string): string {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
     throw new ApiError(400, "INVALID_INPUT", `${label} must be a UUID.`);
   }
   return value;
-}
-
-function requireSource(body: Record<string, unknown>): string {
-  const source = requireString(body, "source", 32).toUpperCase();
-  if (!INTAKE_SOURCES.has(source)) {
-    throw new ApiError(400, "INVALID_INPUT", "source is not supported.");
-  }
-  return source;
 }
 
 async function createSession(
@@ -147,10 +134,14 @@ async function createSession(
   identity: TenantIdentity,
   definitionId: string,
 ): Promise<Response> {
-  const body = await parseJsonObject(request);
+  const body = await jsonBody(request);
   const definitionVersion = optionalString(body, "definitionVersion", 64);
-  const source = requireSource(body);
-  const idempotencyKey = requireString(body, "idempotencyKey", 200);
+  const source = requiredString(body, "source", 32).toUpperCase();
+  const idempotencyKey = requiredString(body, "idempotencyKey");
+
+  if (!intakeSources.has(source)) {
+    throw new ApiError(400, "INVALID_INPUT", "source is not supported.");
+  }
 
   const definition = await client.query(
     `SELECT
@@ -183,16 +174,10 @@ async function createSession(
   }
 
   const versionId = String(definitionRow.version_id);
-
-  const insertedSubmission = await client.query(
+  const inserted = await client.query(
     `INSERT INTO crm_intake_submissions (
-       tenant_id,
-       definition_id,
-       definition_version_id,
-       state,
-       revision,
-       source,
-       idempotency_key
+       tenant_id, definition_id, definition_version_id,
+       state, revision, source, idempotency_key
      ) VALUES ($1::uuid, $2::uuid, $3::uuid, 'IN_PROGRESS', 1, $4, $5)
      ON CONFLICT (tenant_id, idempotency_key) DO NOTHING
      RETURNING id, revision`,
@@ -201,55 +186,17 @@ async function createSession(
 
   let submissionId: string;
   let revision: number;
-  let created = true;
-
-  if (insertedSubmission.rows[0]) {
-    submissionId = String(insertedSubmission.rows[0].id);
-    revision = Number(insertedSubmission.rows[0].revision);
-  } else {
-    created = false;
-    const existing = await client.query(
-      `SELECT id, revision, definition_id, definition_version_id, source
-       FROM crm_intake_submissions
-       WHERE tenant_id = $1::uuid
-         AND idempotency_key = $2
-       LIMIT 1`,
-      [identity.orgId, idempotencyKey],
-    );
-    const row = existing.rows[0];
-    if (!row) {
-      throw new ApiError(
-        409,
-        "IDEMPOTENCY_CONFLICT",
-        "The idempotent request could not be reconciled.",
-      );
-    }
-    if (
-      String(row.definition_id) !== definitionId ||
-      String(row.definition_version_id) !== versionId ||
-      String(row.source) !== source
-    ) {
-      throw new ApiError(
-        409,
-        "IDEMPOTENCY_CONFLICT",
-        "The idempotency key was already used for a different request.",
-      );
-    }
-    submissionId = String(row.id);
-    revision = Number(row.revision);
-  }
-
   let sessionId: string;
+  const created = Boolean(inserted.rows[0]);
+
   if (created) {
+    submissionId = String(inserted.rows[0]!.id);
+    revision = Number(inserted.rows[0]!.revision);
+
     const session = await client.query(
       `INSERT INTO crm_intake_sessions (
-         tenant_id,
-         submission_id,
-         definition_version_id,
-         actor_ref,
-         channel,
-         state,
-         revision
+         tenant_id, submission_id, definition_version_id,
+         actor_ref, channel, state, revision
        ) VALUES ($1::uuid, $2::uuid, $3::uuid, $4::jsonb, $5, 'ACTIVE', 0)
        RETURNING id`,
       [
@@ -260,36 +207,62 @@ async function createSession(
         source,
       ],
     );
-    const sessionRow = session.rows[0];
-    if (!sessionRow) {
-      throw new ApiError(500, "SESSION_CREATE_FAILED", "The session was not created.");
+    if (!session.rows[0]) {
+      throw new ApiError(
+        500,
+        "SESSION_CREATE_FAILED",
+        "The session was not created.",
+      );
     }
-    sessionId = String(sessionRow.id);
+    sessionId = String(session.rows[0].id);
 
     await client.query(
       `INSERT INTO crm_intake_outbox (
-         tenant_id,
-         event_type,
-         event_version,
-         aggregate_type,
-         aggregate_id,
-         payload,
-         actor_ref,
-         correlation_id,
-         idempotency_key
-       ) VALUES ($1::uuid, 'IntakeStarted', 1, 'IntakeSubmission', $2::uuid,
-         $3::jsonb, $4::jsonb, $5::uuid, $6)`,
+         tenant_id, event_type, event_version, aggregate_type, aggregate_id,
+         payload, actor_ref, correlation_id, idempotency_key
+       ) VALUES (
+         $1::uuid, 'IntakeStarted', 1, 'IntakeSubmission', $2::uuid,
+         $3::jsonb, $4::jsonb, $5::uuid, $6
+       )`,
       [
         identity.orgId,
         submissionId,
-        JSON.stringify({ definitionId, definitionVersionId: versionId, source }),
+        JSON.stringify({
+          definitionId,
+          definitionVersionId: versionId,
+          source,
+        }),
         JSON.stringify(actorRef(identity)),
         randomId(),
         `IntakeStarted:${submissionId}`,
       ],
     );
   } else {
-    const existingSession = await client.query(
+    const existing = await client.query(
+      `SELECT id, revision, definition_id, definition_version_id, source
+       FROM crm_intake_submissions
+       WHERE tenant_id = $1::uuid
+         AND idempotency_key = $2
+       LIMIT 1`,
+      [identity.orgId, idempotencyKey],
+    );
+    const row = existing.rows[0];
+    if (
+      !row ||
+      String(row.definition_id) !== definitionId ||
+      String(row.definition_version_id) !== versionId ||
+      String(row.source) !== source
+    ) {
+      throw new ApiError(
+        409,
+        "IDEMPOTENCY_CONFLICT",
+        "The idempotency key was already used for a different request.",
+      );
+    }
+
+    submissionId = String(row.id);
+    revision = Number(row.revision);
+    const session = await client.query(
       `SELECT id
        FROM crm_intake_sessions
        WHERE tenant_id = $1::uuid
@@ -298,15 +271,14 @@ async function createSession(
        LIMIT 1`,
       [identity.orgId, submissionId],
     );
-    const sessionRow = existingSession.rows[0];
-    if (!sessionRow) {
+    if (!session.rows[0]) {
       throw new ApiError(
         409,
         "IDEMPOTENCY_CONFLICT",
         "The prior submission has no matching intake session.",
       );
     }
-    sessionId = String(sessionRow.id);
+    sessionId = String(session.rows[0].id);
   }
 
   return jsonResponse(
@@ -328,7 +300,7 @@ async function recordAnswer(
   identity: TenantIdentity,
   sessionId: string,
 ): Promise<Response> {
-  const body = await parseJsonObject(request);
+  const body = await jsonBody(request);
 
   if (Object.prototype.hasOwnProperty.call(body, "confirmedByHuman")) {
     throw new ApiError(
@@ -338,8 +310,12 @@ async function recordAnswer(
     );
   }
 
-  const epistemicState = requireString(body, "epistemicState", 32).toUpperCase();
-  if (!RESPONDENT_EPISTEMIC_STATES.has(epistemicState)) {
+  const epistemicState = requiredString(
+    body,
+    "epistemicState",
+    32,
+  ).toUpperCase();
+  if (!respondentEpistemicStates.has(epistemicState)) {
     throw new ApiError(
       400,
       "EPISTEMIC_STATE_FORBIDDEN",
@@ -347,9 +323,9 @@ async function recordAnswer(
     );
   }
 
-  const fieldKey = requireString(body, "fieldKey", 200);
-  const expectedRevision = requireRevision(body);
-  const idempotencyKey = requireString(body, "idempotencyKey", 200);
+  const fieldKey = requiredString(body, "fieldKey");
+  const revisionExpected = expectedRevision(body);
+  const idempotencyKey = requiredString(body, "idempotencyKey");
   const answerId = optionalString(body, "answerId", 64) ?? randomId();
   const supersedesAnswerId = optionalString(body, "supersedesAnswerId", 64);
   const rawValue = body.rawValue ?? null;
@@ -373,7 +349,11 @@ async function recordAnswer(
 
   const sessionRow = session.rows[0];
   if (!sessionRow) {
-    throw new ApiError(404, "SESSION_NOT_FOUND", "The intake session was not found.");
+    throw new ApiError(
+      404,
+      "SESSION_NOT_FOUND",
+      "The intake session was not found.",
+    );
   }
   if (
     String(sessionRow.session_state) !== "ACTIVE" ||
@@ -388,7 +368,7 @@ async function recordAnswer(
 
   const submissionId = String(sessionRow.submission_id);
   const currentRevision = Number(sessionRow.submission_revision);
-  if (currentRevision !== expectedRevision) {
+  if (currentRevision !== revisionExpected) {
     throw new ApiError(
       409,
       "STALE_REVISION",
@@ -408,11 +388,11 @@ async function recordAnswer(
 
   if (existing.rows[0]) {
     const row = existing.rows[0];
-    const equivalent =
+    const samePayload =
       String(row.field_key) === fieldKey &&
       String(row.epistemic_state) === epistemicState &&
       JSON.stringify(row.raw_value ?? null) === JSON.stringify(rawValue);
-    if (!equivalent) {
+    if (!samePayload) {
       throw new ApiError(
         409,
         "IDEMPOTENCY_CONFLICT",
@@ -429,19 +409,12 @@ async function recordAnswer(
 
   const inserted = await client.query(
     `INSERT INTO crm_intake_answers (
-       id,
-       tenant_id,
-       submission_id,
-       session_id,
-       field_key,
-       raw_value,
-       epistemic_state,
-       confirmed_by_human,
-       supersedes_answer_id,
-       idempotency_key
+       id, tenant_id, submission_id, session_id, field_key,
+       raw_value, epistemic_state, confirmed_by_human,
+       supersedes_answer_id, idempotency_key
      ) VALUES (
-       $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, $6::jsonb,
-       $7, false, $8::uuid, $9
+       $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5,
+       $6::jsonb, $7, false, $8::uuid, $9
      )
      RETURNING id`,
     [
@@ -456,10 +429,12 @@ async function recordAnswer(
       idempotencyKey,
     ],
   );
-
-  const answerRow = inserted.rows[0];
-  if (!answerRow) {
-    throw new ApiError(500, "ANSWER_CREATE_FAILED", "The answer was not created.");
+  if (!inserted.rows[0]) {
+    throw new ApiError(
+      500,
+      "ANSWER_CREATE_FAILED",
+      "The answer was not created.",
+    );
   }
 
   const revision = await client.query(
@@ -471,35 +446,29 @@ async function recordAnswer(
        AND revision = $3
        AND state = 'IN_PROGRESS'
      RETURNING revision`,
-    [submissionId, identity.orgId, expectedRevision],
+    [submissionId, identity.orgId, revisionExpected],
   );
-
-  const revisionRow = revision.rows[0];
-  if (!revisionRow) {
+  if (!revision.rows[0]) {
     throw new ApiError(
       409,
       "STALE_REVISION",
       "Submission revision does not match.",
     );
   }
-  const newRevision = Number(revisionRow.revision);
+  const newRevision = Number(revision.rows[0].revision);
+  const persistedAnswerId = String(inserted.rows[0].id);
 
   await client.query(
     `INSERT INTO crm_intake_provenance (
-       tenant_id,
-       answer_id,
-       source_type,
-       source_ref,
-       actor_ref,
-       transformation_type,
-       parent_provenance_ids
+       tenant_id, answer_id, source_type, source_ref, actor_ref,
+       transformation_type, parent_provenance_ids
      ) VALUES (
        $1::uuid, $2::uuid, 'RESPONDENT', $3, $4::jsonb,
        'ORIGINAL', '{}'::uuid[]
      )`,
     [
       identity.orgId,
-      String(answerRow.id),
+      persistedAnswerId,
       `intake-session:${sessionId}`,
       JSON.stringify(actorRef(identity)),
     ],
@@ -516,15 +485,8 @@ async function recordAnswer(
 
   await client.query(
     `INSERT INTO crm_intake_outbox (
-       tenant_id,
-       event_type,
-       event_version,
-       aggregate_type,
-       aggregate_id,
-       payload,
-       actor_ref,
-       correlation_id,
-       idempotency_key
+       tenant_id, event_type, event_version, aggregate_type, aggregate_id,
+       payload, actor_ref, correlation_id, idempotency_key
      ) VALUES (
        $1::uuid, 'AnswerRecorded', 1, 'IntakeSubmission', $2::uuid,
        $3::jsonb, $4::jsonb, $5::uuid, $6
@@ -533,20 +495,20 @@ async function recordAnswer(
       identity.orgId,
       submissionId,
       JSON.stringify({
-        answerId: String(answerRow.id),
+        answerId: persistedAnswerId,
         fieldKey,
         epistemicState,
         revision: newRevision,
       }),
       JSON.stringify(actorRef(identity)),
       randomId(),
-      `AnswerRecorded:${submissionId}:${String(answerRow.id)}`,
+      `AnswerRecorded:${submissionId}:${persistedAnswerId}`,
     ],
   );
 
   return jsonResponse({
     ok: true,
-    answerId: String(answerRow.id),
+    answerId: persistedAnswerId,
     submissionRevision: newRevision,
     accepted: true,
   });
@@ -557,11 +519,13 @@ export async function handleCrmIntakeApiWithTransaction(
   rawEnv: unknown,
   transactionRunner: IntakeTransactionRunner,
 ): Promise<Response | null> {
-  const url = new URL(request.url);
-
-  const sessionMatch = /^\/api\/crm\/intakes\/([^/]+)\/sessions$/.exec(url.pathname);
-  const answerMatch =
-    /^\/api\/crm\/intake-sessions\/([^/]+)\/answers$/.exec(url.pathname);
+  const pathname = new URL(request.url).pathname;
+  const sessionMatch = /^\/api\/crm\/intakes\/([^/]+)\/sessions$/.exec(
+    pathname,
+  );
+  const answerMatch = /^\/api\/crm\/intake-sessions\/([^/]+)\/answers$/.exec(
+    pathname,
+  );
 
   if (!sessionMatch && !answerMatch) return null;
 
@@ -571,13 +535,13 @@ export async function handleCrmIntakeApiWithTransaction(
     }
 
     if (sessionMatch) {
-      const definitionId = requireUuidPathValue(sessionMatch[1]!, "definitionId");
+      const definitionId = pathUuid(sessionMatch[1]!, "definitionId");
       return await transactionRunner(request, rawEnv, (client, identity) =>
         createSession(request, client, identity, definitionId),
       );
     }
 
-    const sessionId = requireUuidPathValue(answerMatch![1]!, "sessionId");
+    const sessionId = pathUuid(answerMatch![1]!, "sessionId");
     return await transactionRunner(request, rawEnv, (client, identity) =>
       recordAnswer(request, client, identity, sessionId),
     );
@@ -590,9 +554,5 @@ export async function handleCrmIntakeApi(
   request: Request,
   rawEnv: unknown,
 ): Promise<Response | null> {
-  return handleCrmIntakeApiWithTransaction(
-    request,
-    rawEnv,
-    productionTransactionRunner,
-  );
+  return handleCrmIntakeApiWithTransaction(request, rawEnv, productionRunner);
 }
