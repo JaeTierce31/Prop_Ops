@@ -53,7 +53,9 @@ function decision(
   };
 }
 
-export function routePropOps(input: PropOpsRoutingInput): PropOpsRoutingDecision {
+export function routePropOps(
+  input: PropOpsRoutingInput,
+): PropOpsRoutingDecision {
   const { qualification, dimensions } = input;
   const blockingContradiction =
     input.blockingContradiction === true || qualification.blockingContradiction;
