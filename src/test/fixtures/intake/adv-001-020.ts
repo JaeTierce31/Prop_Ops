@@ -12,7 +12,8 @@ export const ADV_FIXTURES: IntakeContractFixture[] = [
     id: "ADV-002",
     name: "Forged organization id",
     kind: "SECURITY",
-    invariant: "Organization identifiers cannot escape authorized tenant scope.",
+    invariant:
+      "Organization identifiers cannot escape authorized tenant scope.",
     expected: "Forged organization selection is denied.",
   },
   {
@@ -26,7 +27,8 @@ export const ADV_FIXTURES: IntakeContractFixture[] = [
     id: "ADV-004",
     name: "Wrong-definition public token",
     kind: "SECURITY",
-    invariant: "Public token is bound to its authorized intake definition/version.",
+    invariant:
+      "Public token is bound to its authorized intake definition/version.",
     expected: "Cross-definition use is denied.",
   },
   {
@@ -34,7 +36,8 @@ export const ADV_FIXTURES: IntakeContractFixture[] = [
     name: "Malformed evidence MIME",
     kind: "SECURITY",
     invariant: "Evidence upload content type must satisfy upload policy.",
-    expected: "Malformed or disallowed MIME is rejected before accepted evidence state.",
+    expected:
+      "Malformed or disallowed MIME is rejected before accepted evidence state.",
   },
   {
     id: "ADV-006",
@@ -82,8 +85,10 @@ export const ADV_FIXTURES: IntakeContractFixture[] = [
     id: "ADV-012",
     name: "Forged human-confirmed flag",
     kind: "SECURITY",
-    invariant: "Public input cannot self-assert authoritative human confirmation.",
-    expected: "Confirmation derives from authorized confirmation evidence only.",
+    invariant:
+      "Public input cannot self-assert authoritative human confirmation.",
+    expected:
+      "Confirmation derives from authorized confirmation evidence only.",
   },
   {
     id: "ADV-013",
@@ -110,14 +115,16 @@ export const ADV_FIXTURES: IntakeContractFixture[] = [
     id: "ADV-016",
     name: "Cross-tenant provisional identity match",
     kind: "SECURITY",
-    invariant: "Identity resolution never matches provisional identity across tenant boundary.",
+    invariant:
+      "Identity resolution never matches provisional identity across tenant boundary.",
     expected: "Cross-tenant candidate is invisible.",
   },
   {
     id: "ADV-017",
     name: "Ambiguous identity forced match",
     kind: "SECURITY",
-    invariant: "Ambiguous identity cannot be promoted to canonical match without authorized resolution.",
+    invariant:
+      "Ambiguous identity cannot be promoted to canonical match without authorized resolution.",
     expected: "Forced canonical link is denied.",
   },
   {
@@ -131,7 +138,8 @@ export const ADV_FIXTURES: IntakeContractFixture[] = [
     id: "ADV-019",
     name: "Evidence payload retention deletion",
     kind: "SCHEMA",
-    invariant: "Retention deletion removes payload while preserving required audit lineage.",
+    invariant:
+      "Retention deletion removes payload while preserving required audit lineage.",
     expected: "Metadata/hash lineage survives eligible payload deletion.",
   },
   {
