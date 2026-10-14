@@ -90,6 +90,7 @@ describe("contract-executable INT/ADV invariants", () => {
   it("INT-004 and ADV-018 preserve UNKNOWN rather than coercing it to zero", () => {
     expect(
       isRequiredFieldSatisfied({
+        required: true,
         epistemicState: "UNKNOWN",
         qualificationCritical: true,
       }),
