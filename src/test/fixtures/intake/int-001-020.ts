@@ -1,9 +1,5 @@
 export type IntakeContractFixtureKind =
-  | "SCHEMA"
-  | "DOMAIN"
-  | "POLICY"
-  | "SECURITY"
-  | "INTEGRATION";
+  "SCHEMA" | "DOMAIN" | "POLICY" | "SECURITY" | "INTEGRATION";
 
 export interface IntakeContractFixture {
   id: `INT-${string}` | `ADV-${string}`;
@@ -25,7 +21,8 @@ export const INT_FIXTURES: IntakeContractFixture[] = [
     id: "INT-002",
     name: "Version lineage",
     kind: "SCHEMA",
-    invariant: "Historical submissions resolve their original definition version.",
+    invariant:
+      "Historical submissions resolve their original definition version.",
     expected: "No reinterpretation through current version.",
   },
   {
@@ -74,7 +71,8 @@ export const INT_FIXTURES: IntakeContractFixture[] = [
     id: "INT-009",
     name: "Qualification explainability",
     kind: "POLICY",
-    invariant: "Qualification output preserves policy, dimensions, evidence, and coverage.",
+    invariant:
+      "Qualification output preserves policy, dimensions, evidence, and coverage.",
     expected: "Derived state is explainable from frozen inputs.",
   },
   {
@@ -95,7 +93,8 @@ export const INT_FIXTURES: IntakeContractFixture[] = [
     id: "INT-012",
     name: "Command authorization",
     kind: "SECURITY",
-    invariant: "Intake proposes commands but cannot directly mutate protected CRM state.",
+    invariant:
+      "Intake proposes commands but cannot directly mutate protected CRM state.",
     expected: "Receiving domain independently authorizes effects.",
   },
   {
@@ -116,7 +115,8 @@ export const INT_FIXTURES: IntakeContractFixture[] = [
     id: "INT-015",
     name: "Public intake isolation",
     kind: "SECURITY",
-    invariant: "Public intake authority is definition-scoped and non-enumerating.",
+    invariant:
+      "Public intake authority is definition-scoped and non-enumerating.",
     expected: "Public token cannot search CRM or switch tenant.",
   },
   {
@@ -151,7 +151,8 @@ export const INT_FIXTURES: IntakeContractFixture[] = [
     id: "INT-020",
     name: "Audit reconstruction",
     kind: "INTEGRATION",
-    invariant: "A completed intake is reconstructable through causation and correlation evidence.",
+    invariant:
+      "A completed intake is reconstructable through causation and correlation evidence.",
     expected: "Request-to-effect lineage remains traceable.",
   },
 ];
