@@ -153,10 +153,7 @@ export function routePropOps(
     ]);
   }
 
-  if (
-    qualification.state === "UNQUALIFIED" &&
-    (dimensions.ICP_FIT ?? 0) > 25
-  ) {
+  if (qualification.state === "UNQUALIFIED" && (dimensions.ICP_FIT ?? 0) > 25) {
     return decision("NURTURE", "R-003", [
       "CreatePersonCandidate",
       "EnterNurtureSequence",
