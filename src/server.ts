@@ -4,6 +4,7 @@ import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleCrmIntakeApi } from "./server/intake-api";
 import { handleCrmIntakeConfirmationApi } from "./server/intake-confirmation-api";
+import { handleCrmIntakeSubmitApi } from "./server/intake-submit-api";
 import { handlePropertyOpsApi } from "./server/property-ops-api";
 
 type ServerEntry = {
@@ -67,6 +68,9 @@ export default {
         env,
       );
       if (confirmationResponse) return confirmationResponse;
+
+      const submitResponse = await handleCrmIntakeSubmitApi(request, env);
+      if (submitResponse) return submitResponse;
 
       const intakeResponse = await handleCrmIntakeApi(request, env);
       if (intakeResponse) return intakeResponse;
