@@ -349,7 +349,9 @@ async function submitIntake(
     answers.map((row) => [String(row["field_key"]), row] as const),
   );
   const dimensions = dimensionsFromAnswers(answers);
-  const economicBuyerKnown = factKnown(answerByField.get("buying.economic_buyer"));
+  const economicBuyerKnown = factKnown(
+    answerByField.get("buying.economic_buyer"),
+  );
   const timelineKnown = factKnown(answerByField.get("buying.target_timeline"));
   const snapshot = {
     answers: answers.map((row) => ({
@@ -631,9 +633,7 @@ export async function handleCrmIntakeSubmitApiWithTransaction(
   transactionRunner: IntakeSubmitTransactionRunner,
 ): Promise<Response | null> {
   const pathname = new URL(request.url).pathname;
-  const match = /^\/api\/crm\/intake-sessions\/([^/]+)\/submit$/.exec(
-    pathname,
-  );
+  const match = /^\/api\/crm\/intake-sessions\/([^/]+)\/submit$/.exec(pathname);
   if (!match) return null;
 
   try {
