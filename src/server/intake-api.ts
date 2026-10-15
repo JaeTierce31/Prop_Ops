@@ -26,7 +26,11 @@ export type IntakeTransactionRunner = <T>(
   ) => Promise<T>,
 ) => Promise<T>;
 
-const productionRunner: IntakeTransactionRunner = (request, rawEnv, operation) =>
+const productionRunner: IntakeTransactionRunner = (
+  request,
+  rawEnv,
+  operation,
+) =>
   withTenantTransaction(request, rawEnv, (client, identity, env) =>
     operation(client as unknown as IntakeDbClient, identity, env),
   );
@@ -122,7 +126,11 @@ function expectedRevision(body: Record<string, unknown>): number {
 }
 
 function pathUuid(value: string, label: string): string {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      value,
+    )
+  ) {
     throw new ApiError(400, "INVALID_INPUT", `${label} must be a UUID.`);
   }
   return value;
