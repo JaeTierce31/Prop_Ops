@@ -63,7 +63,10 @@ function submitRequest(body: Record<string, unknown> = {}) {
 }
 
 function baseResponder(text: string): QueryResult {
-  if (text.includes("FROM crm_intake_sessions s") && text.includes("crm_intake_definition_versions v")) {
+  if (
+    text.includes("FROM crm_intake_sessions s") &&
+    text.includes("crm_intake_definition_versions v")
+  ) {
     return {
       rows: [
         {
@@ -145,7 +148,10 @@ function baseResponder(text: string): QueryResult {
 describe("CRM intake submit authority", () => {
   it("rejects client-supplied qualification, routing, or command authority", async () => {
     const response = await handleCrmIntakeSubmitApiWithTransaction(
-      submitRequest({ score: 99, routingState: "HIGH_PRIORITY_PILOT_CANDIDATE" }),
+      submitRequest({
+        score: 99,
+        routingState: "HIGH_PRIORITY_PILOT_CANDIDATE",
+      }),
       {},
       fakeTransaction(baseResponder, []),
     );
@@ -219,7 +225,10 @@ describe("CRM intake submit authority", () => {
     const queries: FakeQuery[] = [];
     const responder = (text: string, values: unknown[]) => {
       const result = baseResponder(text);
-      if (text.includes("FROM crm_intake_sessions s") && text.includes("crm_intake_definition_versions v")) {
+      if (
+        text.includes("FROM crm_intake_sessions s") &&
+        text.includes("crm_intake_definition_versions v")
+      ) {
         result.rows[0]!["submission_revision"] = 12;
       }
       return result;
