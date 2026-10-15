@@ -2,6 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { handleCrmIntakeApi } from "./server/intake-api";
 import { handlePropertyOpsApi } from "./server/property-ops-api";
 
 type ServerEntry = {
@@ -59,6 +60,9 @@ export default {
     try {
       const propertyOpsResponse = await handlePropertyOpsApi(request, env);
       if (propertyOpsResponse) return propertyOpsResponse;
+
+      const intakeResponse = await handleCrmIntakeApi(request, env);
+      if (intakeResponse) return intakeResponse;
 
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
