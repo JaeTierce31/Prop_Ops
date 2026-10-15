@@ -251,10 +251,12 @@ describe("J3S-AUTHZ-ORACLE-001", () => {
 
   it("keeps work-order authorization aligned with case scope", () => {
     expect(
-      decide(actors.workerA, resources.residentACase, "work_order.mutate").allow,
+      decide(actors.workerA, resources.residentACase, "work_order.mutate")
+        .allow,
     ).toBe(true);
     expect(
-      decide(actors.workerA, resources.residentBCase, "work_order.mutate").allow,
+      decide(actors.workerA, resources.residentBCase, "work_order.mutate")
+        .allow,
     ).toBe(false);
   });
 });
