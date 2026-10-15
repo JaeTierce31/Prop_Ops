@@ -149,12 +149,17 @@ describe("J3S-AUTHZ-ORACLE-001", () => {
 
   it("proves forged request hints cannot alter a denial", () => {
     const baseline = decide(actors.residentA, resources.residentBCase);
-    const forged = decide(actors.residentA, resources.residentBCase, "case.read", {
-      role: "ops",
-      orgId: ORG_A,
-      propertyId: PROPERTY_A,
-      unitId: UNIT_A,
-    });
+    const forged = decide(
+      actors.residentA,
+      resources.residentBCase,
+      "case.read",
+      {
+        role: "ops",
+        orgId: ORG_A,
+        propertyId: PROPERTY_A,
+        unitId: UNIT_A,
+      },
+    );
 
     expect(baseline.allow).toBe(false);
     expect(forged).toEqual(baseline);
@@ -162,12 +167,17 @@ describe("J3S-AUTHZ-ORACLE-001", () => {
 
   it("proves forged request hints cannot alter an allow", () => {
     const baseline = decide(actors.managerA, resources.residentACase);
-    const forged = decide(actors.managerA, resources.residentACase, "case.read", {
-      role: "resident",
-      orgId: ORG_B,
-      propertyId: PROPERTY_B,
-      unitId: UNIT_B,
-    });
+    const forged = decide(
+      actors.managerA,
+      resources.residentACase,
+      "case.read",
+      {
+        role: "resident",
+        orgId: ORG_B,
+        propertyId: PROPERTY_B,
+        unitId: UNIT_B,
+      },
+    );
 
     expect(baseline.allow).toBe(true);
     expect(forged).toEqual(baseline);
