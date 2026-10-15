@@ -16,7 +16,7 @@ export interface TenantIdentity {
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
-  readonly details?: Record<string, unknown>;
+  readonly details: Record<string, unknown> | undefined;
 
   constructor(
     status: number,
