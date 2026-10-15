@@ -114,7 +114,7 @@ function optionalString(
 }
 
 function expectedRevision(body: Record<string, unknown>): number {
-  const value = body.expectedRevision;
+  const value = body["expectedRevision"];
   if (!Number.isSafeInteger(value) || Number(value) < 0) {
     throw new ApiError(
       400,
@@ -181,7 +181,7 @@ async function createSession(
     );
   }
 
-  const versionId = String(definitionRow.version_id);
+  const versionId = String(definitionRow["version_id"]);
   const inserted = await client.query(
     `INSERT INTO crm_intake_submissions (
        tenant_id, definition_id, definition_version_id,
@@ -198,8 +198,8 @@ async function createSession(
   const created = Boolean(inserted.rows[0]);
 
   if (created) {
-    submissionId = String(inserted.rows[0]!.id);
-    revision = Number(inserted.rows[0]!.revision);
+    submissionId = String(inserted.rows[0]!["id"]);
+    revision = Number(inserted.rows[0]!["revision"]);
 
     const session = await client.query(
       `INSERT INTO crm_intake_sessions (
@@ -222,7 +222,7 @@ async function createSession(
         "The session was not created.",
       );
     }
-    sessionId = String(session.rows[0].id);
+    sessionId = String(session.rows[0]["id"]);
 
     await client.query(
       `INSERT INTO crm_intake_outbox (
@@ -257,9 +257,9 @@ async function createSession(
     const row = existing.rows[0];
     if (
       !row ||
-      String(row.definition_id) !== definitionId ||
-      String(row.definition_version_id) !== versionId ||
-      String(row.source) !== source
+      String(row["definition_id"]) !== definitionId ||
+      String(row["definition_version_id"]) !== versionId ||
+      String(row["source"]) !== source
     ) {
       throw new ApiError(
         409,
@@ -268,8 +268,8 @@ async function createSession(
       );
     }
 
-    submissionId = String(row.id);
-    revision = Number(row.revision);
+    submissionId = String(row["id"]);
+    revision = Number(row["revision"]);
     const session = await client.query(
       `SELECT id
        FROM crm_intake_sessions
@@ -286,7 +286,7 @@ async function createSession(
         "The prior submission has no matching intake session.",
       );
     }
-    sessionId = String(session.rows[0].id);
+    sessionId = String(session.rows[0]["id"]);
   }
 
   return jsonResponse(
@@ -336,7 +336,7 @@ async function recordAnswer(
   const idempotencyKey = requiredString(body, "idempotencyKey");
   const answerId = optionalString(body, "answerId", 64) ?? randomId();
   const supersedesAnswerId = optionalString(body, "supersedesAnswerId", 64);
-  const rawValue = body.rawValue ?? null;
+  const rawValue = body["rawValue"] ?? null;
 
   const session = await client.query(
     `SELECT
@@ -364,8 +364,8 @@ async function recordAnswer(
     );
   }
   if (
-    String(sessionRow.session_state) !== "ACTIVE" ||
-    String(sessionRow.submission_state) !== "IN_PROGRESS"
+    String(sessionRow["session_state"]) !== "ACTIVE" ||
+    String(sessionRow["submission_state"]) !== "IN_PROGRESS"
   ) {
     throw new ApiError(
       409,
@@ -374,8 +374,8 @@ async function recordAnswer(
     );
   }
 
-  const submissionId = String(sessionRow.submission_id);
-  const currentRevision = Number(sessionRow.submission_revision);
+  const submissionId = String(sessionRow["submission_id"]);
+  const currentRevision = Number(sessionRow["submission_revision"]);
   if (currentRevision !== revisionExpected) {
     throw new ApiError(
       409,
@@ -397,9 +397,9 @@ async function recordAnswer(
   if (existing.rows[0]) {
     const row = existing.rows[0];
     const samePayload =
-      String(row.field_key) === fieldKey &&
-      String(row.epistemic_state) === epistemicState &&
-      JSON.stringify(row.raw_value ?? null) === JSON.stringify(rawValue);
+      String(row["field_key"]) === fieldKey &&
+      String(row["epistemic_state"]) === epistemicState &&
+      JSON.stringify(row["raw_value"] ?? null) === JSON.stringify(rawValue);
     if (!samePayload) {
       throw new ApiError(
         409,
@@ -409,7 +409,7 @@ async function recordAnswer(
     }
     return jsonResponse({
       ok: true,
-      answerId: String(row.id),
+      answerId: String(row["id"]),
       submissionRevision: currentRevision,
       accepted: true,
     });
@@ -463,8 +463,8 @@ async function recordAnswer(
       "Submission revision does not match.",
     );
   }
-  const newRevision = Number(revision.rows[0].revision);
-  const persistedAnswerId = String(inserted.rows[0].id);
+  const newRevision = Number(revision.rows[0]["revision"]);
+  const persistedAnswerId = String(inserted.rows[0]["id"]);
 
   await client.query(
     `INSERT INTO crm_intake_provenance (
