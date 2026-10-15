@@ -3,6 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleCrmIntakeApi } from "./server/intake-api";
+import { handleCrmIntakeConfirmationApi } from "./server/intake-confirmation-api";
 import { handlePropertyOpsApi } from "./server/property-ops-api";
 
 type ServerEntry = {
@@ -60,6 +61,12 @@ export default {
     try {
       const propertyOpsResponse = await handlePropertyOpsApi(request, env);
       if (propertyOpsResponse) return propertyOpsResponse;
+
+      const confirmationResponse = await handleCrmIntakeConfirmationApi(
+        request,
+        env,
+      );
+      if (confirmationResponse) return confirmationResponse;
 
       const intakeResponse = await handleCrmIntakeApi(request, env);
       if (intakeResponse) return intakeResponse;
