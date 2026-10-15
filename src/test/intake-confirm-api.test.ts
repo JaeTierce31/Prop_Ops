@@ -63,7 +63,10 @@ describe("CRM intake authoritative human confirmation", () => {
   it("creates a superseding KNOWN answer instead of mutating an AI inference", async () => {
     const queries: FakeQuery[] = [];
     const tx = fakeTransaction((text) => {
-      if (text.includes("FROM crm_intake_sessions s") && text.includes("crm_intake_answers a")) {
+      if (
+        text.includes("FROM crm_intake_sessions s") &&
+        text.includes("crm_intake_answers a")
+      ) {
         return {
           rows: [
             {
@@ -81,11 +84,16 @@ describe("CRM intake authoritative human confirmation", () => {
           ],
         };
       }
-      if (text.includes("FROM crm_intake_answers") && text.includes("idempotency_key")) {
+      if (
+        text.includes("FROM crm_intake_answers") &&
+        text.includes("idempotency_key")
+      ) {
         return { rows: [] };
       }
       if (text.includes("INSERT INTO crm_intake_answers")) {
-        return { rows: [{ id: "62000000-0000-0000-0000-000000000002" }] };
+        return {
+          rows: [{ id: "62000000-0000-0000-0000-000000000002" }],
+        };
       }
       if (text.includes("UPDATE crm_intake_submissions")) {
         return { rows: [{ revision: 3 }] };
@@ -132,7 +140,10 @@ describe("CRM intake authoritative human confirmation", () => {
 
   it("rejects confirmation of a non-INFERRED source answer", async () => {
     const tx = fakeTransaction((text) => {
-      if (text.includes("FROM crm_intake_sessions s") && text.includes("crm_intake_answers a")) {
+      if (
+        text.includes("FROM crm_intake_sessions s") &&
+        text.includes("crm_intake_answers a")
+      ) {
         return {
           rows: [
             {
@@ -168,7 +179,10 @@ describe("CRM intake authoritative human confirmation", () => {
   it("rejects a stale confirmation without creating a superseding answer", async () => {
     const queries: FakeQuery[] = [];
     const tx = fakeTransaction((text) => {
-      if (text.includes("FROM crm_intake_sessions s") && text.includes("crm_intake_answers a")) {
+      if (
+        text.includes("FROM crm_intake_sessions s") &&
+        text.includes("crm_intake_answers a")
+      ) {
         return {
           rows: [
             {
