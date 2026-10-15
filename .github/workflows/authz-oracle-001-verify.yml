@@ -33,6 +33,9 @@ jobs:
       - name: Install frozen dependency graph
         run: npm ci --legacy-peer-deps --no-audit --no-fund
 
+      - name: Diagnostic canonical fixture formatting
+        run: npx prettier src/test/authz-oracle.test.ts
+
       - name: Verify formatting
         run: npx prettier --check "src/**/*.{ts,tsx,css}" eslint.config.js vite.config.ts vitest.config.ts tsconfig.json package.json
 
