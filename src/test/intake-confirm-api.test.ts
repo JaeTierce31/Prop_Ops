@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { handleCrmIntakeApiWithTransaction } from "@/server/intake-api";
+import { handleCrmIntakeConfirmationApiWithTransaction } from "@/server/intake-confirmation-api";
 import type { TenantIdentity } from "@/server/data-auth";
 
 type QueryResult = { rows: Array<Record<string, unknown>>; rowCount?: number };
@@ -104,7 +104,7 @@ describe("CRM intake authoritative human confirmation", () => {
       return { rows: [] };
     }, queries);
 
-    const response = await handleCrmIntakeApiWithTransaction(
+    const response = await handleCrmIntakeConfirmationApiWithTransaction(
       confirmationRequest(),
       {},
       tx,
@@ -164,7 +164,7 @@ describe("CRM intake authoritative human confirmation", () => {
       return { rows: [] };
     }, []);
 
-    const response = await handleCrmIntakeApiWithTransaction(
+    const response = await handleCrmIntakeConfirmationApiWithTransaction(
       confirmationRequest(),
       {},
       tx,
@@ -203,7 +203,7 @@ describe("CRM intake authoritative human confirmation", () => {
       return { rows: [] };
     }, queries);
 
-    const response = await handleCrmIntakeApiWithTransaction(
+    const response = await handleCrmIntakeConfirmationApiWithTransaction(
       confirmationRequest(4),
       {},
       tx,
