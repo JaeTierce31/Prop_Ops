@@ -12,7 +12,9 @@ describe("CRM intake runtime wiring", () => {
     expect(serverSource).toContain(
       "const intakeResponse = await handleCrmIntakeApi(request, env);",
     );
-    expect(serverSource).toContain("if (intakeResponse) return intakeResponse;");
+    expect(serverSource).toContain(
+      "if (intakeResponse) return intakeResponse;",
+    );
 
     const intakeCall = serverSource.indexOf("handleCrmIntakeApi(request, env)");
     const ssrCall = serverSource.indexOf("getServerEntry()");
