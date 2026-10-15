@@ -16,12 +16,19 @@ export interface TenantIdentity {
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
+  readonly details?: Record<string, unknown>;
 
-  constructor(status: number, code: string, message: string) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    details?: Record<string, unknown>,
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -245,7 +252,12 @@ export function jsonResponse(
 export function apiErrorResponse(error: unknown): Response {
   if (error instanceof ApiError) {
     return jsonResponse(
-      { ok: false, error: error.code, message: error.message },
+      {
+        ok: false,
+        error: error.code,
+        message: error.message,
+        ...(error.details ? { details: error.details } : {}),
+      },
       error.status,
     );
   }
