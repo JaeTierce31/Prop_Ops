@@ -94,7 +94,11 @@ function decide(
   operation: AuthorizationInput["operation"] = "case.read",
   untrusted?: AuthorizationInput["untrusted"],
 ) {
-  return authorize({ actor, resource, operation, untrusted });
+  return authorize(
+    untrusted
+      ? { actor, resource, operation, untrusted }
+      : { actor, resource, operation },
+  );
 }
 
 describe("J3S-AUTHZ-ORACLE-001", () => {
