@@ -17,7 +17,9 @@ describe("CRM intake runtime wiring", () => {
     );
 
     const intakeCall = serverSource.indexOf("handleCrmIntakeApi(request, env)");
-    const ssrCall = serverSource.indexOf("getServerEntry()");
+    const ssrCall = serverSource.indexOf(
+      "const handler = await getServerEntry();",
+    );
     expect(intakeCall).toBeGreaterThan(-1);
     expect(ssrCall).toBeGreaterThan(intakeCall);
   });
